@@ -7,13 +7,14 @@ Created on Fri Apr 10 14:22:44 2020
 """
 
 
-import numpy as np
-import pandas as pd
-import requests
-from bs4 import BeautifulSoup
+#import numpy as np
+#import pandas as pd
+#import requests
+#from bs4 import BeautifulSoup
 from datetime import date
-from matplotlib import pyplot
+#from matplotlib import pyplot
 from pathlib import Path
+from tkinter import *
 
 from item import Item
 
@@ -47,6 +48,11 @@ econ_data["Consumer price index"] = \
 print(econ_data)
 """
 
+def add_price_entry(item_description, date, price):
+    if item_description in item_list:
+        item_list[item_description].add_price_entry(date, price)
+    else:
+        print("ERROR : Item does not exist.  >", item_description)
 
 
 def enter_shopping_trip_data_manually():
@@ -62,10 +68,10 @@ def enter_shopping_trip_data_manually():
     store_location = input("Enter the store location: ").lower()
     trip_was_today = input("Was the shopping trip today? [y/n] ").lower()
     if trip_was_today:
-        shopping_date = datetime.today().date()
+        shopping_date = date.today()
     else:
-        shopping_date = datetime.strptime(input("Enter the date of the "
-            "shopping trip: mm-dd-yyyy\n"), "%m-%d-%Y").date()
+        shopping_date = date.fromisoformat(input("Enter the date of the "
+            "shopping trip: yyyy-mm-dd\n"))
         
     # Start loop for creating items 
     while True:
@@ -116,9 +122,11 @@ def load():
             store_location = f.readline().strip("\n")
             is_store_brand = bool(f.readline().strip("\n"))
                 
-            #Create Item and add to item_list
+            #Create Item object using loaded attributes
             loaded_item = Item(item_type, item_description, item_unit_quantity,
                                store_name, store_location, is_store_brand)
+            
+            # Add loaded item to item_list
             item_list[item_description] = loaded_item
             
             # Read price data from remaining lines
@@ -170,10 +178,10 @@ item_list[b.item_description] = b
 """
 
 
-#enter_shopping_trip_data_manually()
 
 #save()
 load()
+add_price_entry("organic unsweetened soymilk", date(2020, 10, 10), 99.99)
 
 print("\n Item list: \n", item_list, "\n")
 for item in item_list.values():
