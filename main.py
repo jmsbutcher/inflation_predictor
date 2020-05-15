@@ -15,6 +15,7 @@ from datetime import date
 #from matplotlib import pyplot
 from pathlib import Path
 from tkinter import *
+from tkinter import Entry, Frame, Label
 
 from item import Item
 
@@ -183,7 +184,102 @@ item_list[b.item_description] = b
 load()
 add_price_entry("organic unsweetened soymilk", date(2020, 10, 10), 99.99)
 
+
 print("\n Item list: \n", item_list, "\n")
 for item in item_list.values():
     item.print_info()
     print("\n")
+    
+    
+def create_existing_item_frame(item):
+    item_frame = Frame(entry_frame)
+    item_frame.pack()
+    
+    label_text = item.item_description.capitalize() + " --- " + \
+                 item.item_unit_quantity
+    description_label = Label(item_frame, text=label_text)
+    description_label.grid(row=0, columnspan=4)
+    
+#    date_label = Label(item_frame, text="Date:")
+#    date_label.grid(row=1, column=0)
+#    date_entry_box = Entry(item_frame)
+#    date_entry_box.insert(1, str(date.today()))
+#    date_entry_box.grid(row=1, column=1)
+    
+    price_entry_label = Label(item_frame, text="Enter Price:")
+    price_entry_label.grid(row=1, column=2)
+    price_entry_box = Entry(item_frame)
+    price_entry_box.grid(row=1, column=3)
+    
+def new_item_frame():
+    new_frame = Frame(entry_frame)
+    new_frame.pack()
+    
+    new_item_label = Label(new_frame, text="Have a new item to track at this "
+                           "store? Enter the info below:" )
+    new_item_label.grid(row=0, column=0, columnspan=2, pady=20)
+
+    item_type_label = Label(new_frame, text="The type of product\ne.g.: "
+                            "(apple, peanut butter, band-aids, etc.)")
+    item_type_label.grid(row=1, column=0, sticky="W")
+    item_type_entry = Entry(new_frame)
+    item_type_entry.grid(row=1, column=1)
+
+    item_desc_label = Label(new_frame, text="A more detailed description of "
+                            "the item\ne.g.: brand name red delicious apples")
+    item_desc_label.grid(row=2, column=0, sticky="W")  
+    item_desc_entry = Entry(new_frame)
+    item_desc_entry.grid(row=2, column=1)
+
+    item_unit_label = Label(new_frame, text="The net weight or number of cont"
+                            "ents per item\ne.g.: (12-pack, 30oz)")
+    item_unit_label.grid(row=3, column=0, sticky="W")
+    item_unit_entry = Entry(new_frame)
+    item_unit_entry.grid(row=3, column=1)
+
+    item_sb_label = Label(new_frame, text="Is the item a store brand?:")
+    item_sb_label.grid(row=4, column=0, sticky="W")
+    item_sb_checkbox = Checkbutton(new_frame)
+    item_sb_checkbox.grid(row=4, column=1, sticky="W")                    
+
+
+
+
+root = Tk()
+root.title("Inflation Predictor")
+
+# Frame for entering new product and price info
+entry_frame = Frame(root)
+entry_frame.pack()
+entry_frame_title = Label(entry_frame, text="Enter data from your shopping trip:")
+entry_frame_title.pack()
+
+store_frame = Frame(entry_frame, borderwidth=4, relief="ridge")
+store_frame.pack(pady=30)
+
+date_label = Label(store_frame, text="Date:")
+date_label.grid(row=0, column=0, sticky="W", padx=10, pady=10)
+date_entry_box = Entry(store_frame)
+date_entry_box.insert(1, str(date.today()))
+date_entry_box.grid(row=0, column=1)
+store_label = Label(store_frame, text="Store name:")
+store_label.grid(row=1, column=0, sticky="W")
+store_entry_box = Entry(store_frame)
+store_entry_box.grid(row=1, column=1)
+store_location_label = Label(store_frame, text="Location:")
+store_location_label.grid(row=2, column=0, sticky="W")
+store_location_entry_box = Entry(store_frame, width=40)
+store_location_entry_box.grid(row=3, columnspan=2, padx=10, pady=10)
+
+# Create an existing item frame for each item already saved
+existing_items_label = Label(entry_frame, text="Items you've tracked before "
+                             "from this store:", font=("Arial", 16))
+existing_items_label.pack()
+for item in item_list.values():
+    create_existing_item_frame(item)
+
+new_item_frame()
+
+
+root.mainloop()
+
