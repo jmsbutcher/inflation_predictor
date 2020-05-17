@@ -15,11 +15,15 @@ from datetime import date
 #from matplotlib import pyplot
 from pathlib import Path
 from tkinter import *
-from tkinter import Entry, Frame, Label
+from tkinter import Button, Checkbutton, Entry, Frame, IntVar, Label, \
+                    StringVar, Tk
 
 from item import Item
 
 item_list = {}
+
+
+
 
 
 """
@@ -138,7 +142,6 @@ def load():
                 loaded_item.add_price_entry(shopping_date, price)
                 
         
-        
 def save():
     """ Save item data to item folder """
     folder = Path.cwd() / "items"
@@ -150,14 +153,22 @@ def save():
             f.write(item.to_string())
         
     
-def to_boolean(string):
-    """ Convert strings ('y', 'n') to boolean values (True, False) """
-    string = string.lower().strip()
-    if string == "y":
-        return True
+def to_boolean(var):
+    """ Convert strings ('y', 'n') and integers (1, 0) 
+        to boolean values (True, False) """
+    if type(var) is type("a"):
+        var = var.lower().strip()
+        if var == "y":
+            return True
+        else:
+            return False
+    elif type(var) is type(1):
+        if var == 1:
+            return True
+        else:
+            return False
     else:
         return False
-    
 
 
 """
@@ -180,19 +191,84 @@ item_list[b.item_description] = b
 
 
 
-#save()
-load()
-add_price_entry("organic unsweetened soymilk", date(2020, 10, 10), 99.99)
+# =============================================================================
+# GUI Interface
+# =============================================================================
+    
+
+def apply_new_item(*args):
+    """ Create a new item using the info entered in the new item frame and
+        add it to the item list.
+    """
+    # Get values from the entry boxes
+    item_type = item_type_var.get()
+    item_description = item_desc_var.get()
+    item_unit_quantity = item_unit_var.get()
+    is_store_brand = to_boolean(item_sb_var.get())
+    store_name = store_var.get()
+    store_location = location_var.get()
+    
+    # Create new item and add it to the item list
+    new_item = Item(item_type, item_description, item_unit_quantity,
+                    store_name, store_location, is_store_brand)
+    item_list[item_description] = new_item
+        
+    # Refresh the item entry frame
+    apply_store_selection()
+    
+
+def apply_new_price(*args):
+    """ Add a new price entry to the item after entering a price in the
+        entry field for that item.
+    """
+    #new_price = 
+    
+    
+def apply_store_selection(*args):
+    """ Search the item list for all items that match the store name
+        and location and generate existing item frames for each.
+    """
+
+    # Destroy any existing item frames
+    clear_item_entry_frame()
+    
+    # Add message    
+    existing_items_label = Label(item_entry_frame, text="Items you've tracked "
+                                 "before from this store:", font=("Arial", 16))
+    existing_items_label.pack()
+    
+    # Get list of items from the store provided in the entry boxes
+    store = store_var.get()
+    location = location_var.get()
+    items = []
+    for i in item_list.values():
+        store_match = i.store_name.lower() == store.lower()
+        location_match = i.store_location.lower() == location.lower()
+        if store_match & location_match:
+            items.append(i)
+            
+    # Create an existing item frame for each item from matching store
+    for i in items:
+        create_existing_item_frame(i)
+    
+    # Add the new item frame to the bottom
+    new_item_frame()
 
 
-print("\n Item list: \n", item_list, "\n")
-for item in item_list.values():
-    item.print_info()
-    print("\n")
+def clear_item_entry_frame():
+    """ Destroy any existing item frames """
+    existing = item_entry_frame.winfo_children()
+    for frame in existing:
+        frame.destroy()
     
     
 def create_existing_item_frame(item):
-    item_frame = Frame(entry_frame)
+    """ Pack a frame into the data entry frame representing an item
+        previously added to the item list. This frame contains a description
+        of the item and an entry field for entering a new price to be added
+        to the item's price data.
+    """
+    item_frame = Frame(item_entry_frame)
     item_frame.pack()
     
     label_text = item.item_description.capitalize() + " --- " + \
@@ -200,19 +276,19 @@ def create_existing_item_frame(item):
     description_label = Label(item_frame, text=label_text)
     description_label.grid(row=0, columnspan=4)
     
-#    date_label = Label(item_frame, text="Date:")
-#    date_label.grid(row=1, column=0)
-#    date_entry_box = Entry(item_frame)
-#    date_entry_box.insert(1, str(date.today()))
-#    date_entry_box.grid(row=1, column=1)
-    
     price_entry_label = Label(item_frame, text="Enter Price:")
     price_entry_label.grid(row=1, column=2)
     price_entry_box = Entry(item_frame)
     price_entry_box.grid(row=1, column=3)
     
+    
 def new_item_frame():
-    new_frame = Frame(entry_frame)
+    """ Pack a frame into the data entry frame that lets you enter a new
+        item you want to track. Contains entry fields for the item's
+        type, description, and unit size, and a checkbutton for whether
+        the item is a store brand.
+    """
+    new_frame = Frame(item_entry_frame)
     new_frame.pack()
     
     new_item_label = Label(new_frame, text="Have a new item to track at this "
@@ -222,31 +298,63 @@ def new_item_frame():
     item_type_label = Label(new_frame, text="The type of product\ne.g.: "
                             "(apple, peanut butter, band-aids, etc.)")
     item_type_label.grid(row=1, column=0, sticky="W")
-    item_type_entry = Entry(new_frame)
+    item_type_entry = Entry(new_frame, textvariable=item_type_var)
     item_type_entry.grid(row=1, column=1)
 
     item_desc_label = Label(new_frame, text="A more detailed description of "
                             "the item\ne.g.: brand name red delicious apples")
     item_desc_label.grid(row=2, column=0, sticky="W")  
-    item_desc_entry = Entry(new_frame)
+    item_desc_entry = Entry(new_frame, textvariable=item_desc_var)
     item_desc_entry.grid(row=2, column=1)
 
     item_unit_label = Label(new_frame, text="The net weight or number of cont"
                             "ents per item\ne.g.: (12-pack, 30oz)")
     item_unit_label.grid(row=3, column=0, sticky="W")
-    item_unit_entry = Entry(new_frame)
+    item_unit_entry = Entry(new_frame, textvariable=item_unit_var)
     item_unit_entry.grid(row=3, column=1)
-
+    
     item_sb_label = Label(new_frame, text="Is the item a store brand?:")
     item_sb_label.grid(row=4, column=0, sticky="W")
-    item_sb_checkbox = Checkbutton(new_frame)
-    item_sb_checkbox.grid(row=4, column=1, sticky="W")                    
+    item_sb_checkbox = Checkbutton(new_frame, variable=item_sb_var)
+    item_sb_checkbox.var = item_sb_var
+    item_sb_checkbox.grid(row=4, column=1, sticky="W")
+
+    item_enter_button = Button(new_frame, text="Enter", command=apply_new_item)                  
+    item_enter_button.grid(row=5)
 
 
 
+
+
+
+
+
+
+
+
+
+
+# =============================================================================
+# Run main program
+# =============================================================================
+
+    
+load()
+print("\n Item list: \n", item_list, "\n")
+for item in item_list.values():
+    item.print_info()
+    print("\n")
 
 root = Tk()
 root.title("Inflation Predictor")
+
+item_type_var = StringVar()
+item_desc_var = StringVar()
+item_unit_var = StringVar()
+item_sb_var = IntVar()
+date_var = StringVar()
+store_var = StringVar()
+location_var = StringVar()
 
 # Frame for entering new product and price info
 entry_frame = Frame(root)
@@ -254,32 +362,37 @@ entry_frame.pack()
 entry_frame_title = Label(entry_frame, text="Enter data from your shopping trip:")
 entry_frame_title.pack()
 
+# Sub-frame of entry frame for entering date and store info
 store_frame = Frame(entry_frame, borderwidth=4, relief="ridge")
 store_frame.pack(pady=30)
 
 date_label = Label(store_frame, text="Date:")
 date_label.grid(row=0, column=0, sticky="W", padx=10, pady=10)
-date_entry_box = Entry(store_frame)
+date_entry_box = Entry(store_frame, textvariable=date_var)
 date_entry_box.insert(1, str(date.today()))
 date_entry_box.grid(row=0, column=1)
+
 store_label = Label(store_frame, text="Store name:")
 store_label.grid(row=1, column=0, sticky="W")
-store_entry_box = Entry(store_frame)
+store_entry_box = Entry(store_frame, textvariable=store_var)
 store_entry_box.grid(row=1, column=1)
+
 store_location_label = Label(store_frame, text="Location:")
 store_location_label.grid(row=2, column=0, sticky="W")
-store_location_entry_box = Entry(store_frame, width=40)
+store_location_entry_box = Entry(store_frame, width=40, textvariable=location_var)
 store_location_entry_box.grid(row=3, columnspan=2, padx=10, pady=10)
 
-# Create an existing item frame for each item already saved
-existing_items_label = Label(entry_frame, text="Items you've tracked before "
-                             "from this store:", font=("Arial", 16))
-existing_items_label.pack()
-for item in item_list.values():
-    create_existing_item_frame(item)
+store_enter_button = Button(store_frame, 
+                            text="Enter", 
+                            command=apply_store_selection)
+store_enter_button.grid(row=4, column=0, sticky="W")
 
-new_item_frame()
+# Sub-frame of entry frame for entering item info for given store
+item_entry_frame = Frame(entry_frame)
+item_entry_frame.pack()
 
+
+#save()
 
 root.mainloop()
 
