@@ -331,32 +331,36 @@ class Item_entry:
         self.item_frame.pack()
         #item_entry_listbox.insert(self.item_frame)
             
-        self.label_text = item.item_description.capitalize() + " --- " + \
+        self.label_text = item.item_description.capitalize() + "  -  " + \
                           item.item_unit_quantity + ": $"
         self.description_label = Label(self.item_frame, text=self.label_text)
         self.description_label.grid(row=0, column=0)
         
         if not item.price_entered_already_today():
             # Create a price entry field
-#            self.generate_price_entry_box()
-            self.price_var = StringVar()
-            self.price_entry_box = Entry(self.item_frame, 
-                                         textvariable=self.price_var, 
-                                         width=5)
-            self.price_entry_box.grid(row=0, column=1)
-            self.price_entry_box.bind("<Return>", self.apply_price_entry)
+            self.generate_price_entry_box()
+#            self.price_var = StringVar()
+#            self.price_entry_box = Entry(self.item_frame, 
+#                                         textvariable=self.price_var, 
+#                                         width=5)
+#            self.price_entry_box.grid(row=0, column=1)
+#            self.price_entry_box.bind("<Return>", self.apply_price_entry)
         else:
             # Display the price entered already today as text
-#            self.generate_price_label_box()
-            self.price_label = Label(self.item_frame, 
-                                     text=str(item.price_data[-1][1]))
-            self.price_label.grid(row=0, column=1)
+            self.generate_price_label_box()
+#            self.price_label = Label(self.item_frame, 
+#                                     text=str(item.price_data[-1][1]))
+#            self.price_label.grid(row=0, column=1)
             
 #            self.edit_button = Button(self.item_frame, text="Edit", 
 #                                  command=self.edit)
 #            self.edit_button.grid(row=0, column=2)
             
     def apply_price_entry(self, *args):
+        
+#        print(self.item.item_description, "  Last Price data entry: ", 
+#              self.item.price_data[-1])
+#        print("Price var:  ", self.price_var.get())
         
         saved_label.grid_remove()
         
@@ -369,41 +373,61 @@ class Item_entry:
         # Append date and price to item's price entry list
         self.item.add_price_entry(d, new_price)
         
-        # Move text entry focus to the next item for fast data entry
+        print(self.item.item_description, "  Last Price data entry: ", 
+              self.item.price_data[-1])
+        print("Price var:  ", self.price_var.get())
+        
+        # Move focus to the next item entry box for fast data entry
         n = self.price_entry_box.tk_focusNext()
+        while n["text"] == "Edit":
+            n = n.tk_focusNext()
         n.focus_set()
         
-        # Replace price entry box with a text label of the price just entered
-        self.price_entry_box.destroy()
-        self.price_label = Label(self.item_frame, text=str(new_price))
-        self.price_label.grid(row=0, column=1)
+
         
-#        self.generate_price_label_box()   
+        # Replace price entry box with a text label of the price just entered
+        print("New price:  ", new_price)
+        self.price_entry_box.destroy()
+#        self.price_label = Label(self.item_frame, text=str(new_price))
+#        self.price_label.grid(row=0, column=1)
+        
+        self.generate_price_label_box()   
         
     def destroy(self):
         self.item_frame.destroy()
         
-#    def edit(self):
-#        self.price_label.destroy()
-#        self.edit_button.destroy()
-#        self.generate_price_entry_box()
+    def edit(self, *args):
+        # Remove today's price entry from item object
+        self.item.remove_todays_price_entry()
         
-#    def generate_price_entry_box(self):
-#        self.price_var = StringVar()
-#        self.price_entry_box = Entry(self.item_frame, 
-#                                     textvariable=self.price_var, 
-#                                     width=5)
-#        self.price_entry_box.grid(row=0, column=1)
-#        self.price_entry_box.bind("<Return>", self.apply_price_entry)
-#        
-#    def generate_price_label_box(self):
+        self.price_label.destroy()
+        self.edit_button.destroy()
+        self.generate_price_entry_box()
+        self.price_entry_box.focus_set()
+        
+        
+    def generate_price_entry_box(self):
+        self.price_var = StringVar()
+        self.price_entry_box = Entry(self.item_frame, 
+                                     textvariable=self.price_var, 
+                                     width=5)
+        self.price_entry_box.grid(row=0, column=1)
+        self.price_entry_box.bind("<Return>", self.apply_price_entry)
+      
+    def generate_price_label_box(self):
+        price_text = "{:.2f}".format(self.item.price_data[-1][1])
 #        self.price_label = Label(self.item_frame, 
-#                                 text=str(item.price_data[-1][1]))
-#        self.price_label.grid(row=0, column=1)
-#        
-#        self.edit_button = Button(self.item_frame, text="Edit", 
-#                              command=self.edit)
-#        self.edit_button.grid(row=0, column=2)
+#                                 text=str(self.item.price_data[-1][1]))
+        self.price_label = Label(self.item_frame, text=price_text)
+        self.price_label.grid(row=0, column=1)
+        
+        self.edit_button = Button(self.item_frame, text="Edit", 
+                              command=self.edit)
+        self.edit_button.grid(row=0, column=2)
+        self.edit_button.bind("<Return>", self.edit)
+        
+#        print("WidgetName: ", self.edit_button.widgetName)
+#        print("WidgetClass: ", self.edit_button.w)
 
 
 

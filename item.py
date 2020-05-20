@@ -5,6 +5,8 @@ Created on Sun May  3 18:55:14 2020
 
 @author: JamesButcher
 """
+from datetime import date
+from collections import namedtuple
 
 class Item:
     """ class Item: a certain product at a store
@@ -41,8 +43,11 @@ class Item:
         self.price_data = []
         
     def add_price_entry(self, date, price):
-        """ Add a tuple of (date, price) to the list of price data """
-        self.price_data.append((date, price))
+        """ Add a named tuple of (date, price) to the list of price data """
+        tuple_name = "Price_entry_for_" + \
+                     self.item_description.replace(" ", "_")
+        price_entry = namedtuple(tuple_name, ["date", "price"])
+        self.price_data.append(price_entry(date, price))
         return self.price_data[-1]
     
     def print_info(self):
@@ -66,11 +71,25 @@ class Item:
                 return entry
         print("No price entry found on that date")
         return None
+    
+    def price_entered_already_today(self):
+        """ returns True if a price entry was added today """
+        if len(self.price_data) == 0:
+            return False
+        todays_date = date.today()
+        latest_entry_date = max([entry[0] for entry in self.price_data])
+        if todays_date == latest_entry_date:
+            return True
+        else:
+            return False
         
     def print_price_data(self):
         print("   Date: \t   Price:")
         for entry in self.price_data:
             print(" {}  --  ${: 8.2f}".format(entry[0], entry[1]))
+            
+    def remove_todays_price_entry(self):
+        del self.price_data[-1]
             
     def to_string(self):
         """ Convert item's data attributes into formatted string for saving """
