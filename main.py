@@ -12,10 +12,15 @@ from tkinter.ttk import  Combobox
 from tkinter import Button, Checkbutton, END, Entry, Frame, IntVar, \
                     Label, StringVar, Tk
 from item import Item
+import data_analysis
 
 # Dictionary of Item objects --- { [Item.item_description] : [Item], ...  }
 item_list = {}
 
+
+# =============================================================================
+# General functions
+# =============================================================================
 def apply_new_item(*args):
     """ Create a new item using the info entered in the new item frame and
         add it to the item list.
@@ -301,6 +306,7 @@ item_desc_var = StringVar()
 item_unit_var = StringVar()
 item_sb_var = IntVar()
 
+
 # =============================================================================
 # Entry frame: Main frame for entering new product and price info
 # =============================================================================
@@ -308,6 +314,7 @@ entry_frame = Frame(root)
 entry_frame.pack(expand=1)
 entry_frame_title = Label(entry_frame, text="Enter data from shopping trip:")
 entry_frame_title.grid(row=0, columnspan=2)
+
 
 # =============================================================================
 # Sub-frame of entry frame:
@@ -359,6 +366,7 @@ store_enter_button = Button(store_frame,
 store_enter_button.grid(row=4, columnspan=2)
 store_enter_button.bind("<Return>", apply_store_selection)
 
+
 # ============================================================================= 
 # Sub-frame of entry frame:
 #   New product adder
@@ -402,6 +410,7 @@ item_enter_button = Button(new_frame, text="Enter", command=apply_new_item)
 item_enter_button.grid(row=5)
 item_enter_button.bind("<Return>", apply_new_item)
 
+
 # =============================================================================
 # Sub-frame of entry frame:
 #   List of existing items tracked at selected store
@@ -419,6 +428,7 @@ save_button.bind("<Return>", save)
 # A blue "Saved" message that appears only after pressing the save button
 saved_label = Label(entry_frame, text="Saved", foreground="blue")
 
+print(data_analysis.convert_price_data_to_training_set(list(item_list.values())[1]))
 # =============================================================================
 # Begin GUI session
 # =============================================================================
