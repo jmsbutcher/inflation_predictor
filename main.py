@@ -428,7 +428,10 @@ save_button.bind("<Return>", save)
 # A blue "Saved" message that appears only after pressing the save button
 saved_label = Label(entry_frame, text="Saved", foreground="blue")
 
-print(data_analysis.convert_price_data_to_training_set(list(item_list.values())[1]))
+#print(data_analysis.convert_price_data_to_training_set(list(item_list.values())[1]))
+
+data_analysis.convert_price_data_to_training_set(list(item_list.values())[2])
+
 # =============================================================================
 # Begin GUI session
 # =============================================================================
