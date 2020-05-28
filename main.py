@@ -14,7 +14,7 @@ from tkinter import Button, Checkbutton, END, Entry, Frame, IntVar, \
 from item import Item
 import data_analysis
 
-# Dictionary of Item objects --- { [Item.item_description] : [Item], ...  }
+# Dictionary of Item objects --- { [Item.item_description1] : [Item1], ...  }
 item_list = {}
 
 
@@ -128,6 +128,11 @@ def enter_shopping_trip_data_manually():
         new_item.add_price_entry(shopping_date, item_price)
         
         more_items_to_add = to_boolean(input("Enter another item? [y/n]: "))
+        
+def generate_training_set(item, timeframe):
+    """ 
+    """
+    return data_analysis.convert_price_data_to_training_set(item, timeframe)
         
 def load():
     """ Load saved item data into item_list """
@@ -281,6 +286,7 @@ load()
 # Print all existing item info 
 print("\n Item list: \n", item_list, "\n")
 for item in item_list.values():
+    item.sort_price_data()
     item.print_info()
     print("\n")
     
@@ -428,9 +434,39 @@ save_button.bind("<Return>", save)
 # A blue "Saved" message that appears only after pressing the save button
 saved_label = Label(entry_frame, text="Saved", foreground="blue")
 
+
+
+
+
+
+
+
+# =============================================================================
+#   Test command box
+
+
+
+
 #print(data_analysis.convert_price_data_to_training_set(list(item_list.values())[1]))
 
-data_analysis.convert_price_data_to_training_set(list(item_list.values())[2])
+#data_analysis.convert_price_data_to_training_set(list(item_list.values())[2])
+
+for item in item_list.values():
+    generate_training_set(item, 60)
+
+
+
+
+# =============================================================================
+
+
+
+
+
+
+
+
+
 
 # =============================================================================
 # Begin GUI session

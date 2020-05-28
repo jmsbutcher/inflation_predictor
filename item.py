@@ -49,16 +49,7 @@ class Item:
         price_entry = namedtuple(tuple_name, ["date", "price"])
         self.price_data.append(price_entry(date, price))
         return self.price_data[-1]
-    
-    def print_info(self):
-        print("Item description: \t", self.item_description,
-              "\nType: \t\t\t", self.item_type,
-              "\nUnit quantity: \t\t", self.item_unit_quantity,
-              "\nStore: \t\t\t", self.store_name, self.store_location)
-        print("\n Date: \t\t Price:")
-        for entry in self.price_data:
-            print(entry[0].__str__(), "\t$", entry[1])
-    
+
     def get_price_entry(self, date):
         """ Search the price data for the given date, 
             and return the (date, price) entry if exists """
@@ -83,6 +74,15 @@ class Item:
         else:
             return False
         
+    def print_info(self):
+        print("Item description: \t", self.item_description,
+              "\nType: \t\t\t", self.item_type,
+              "\nUnit quantity: \t\t", self.item_unit_quantity,
+              "\nStore: \t\t\t", self.store_name, self.store_location)
+        print("\n Date: \t\t Price:")
+        for entry in self.price_data:
+            print(entry[0].__str__(), "\t$", entry[1])
+            
     def print_price_data(self):
         print("   Date: \t   Price:")
         for entry in self.price_data:
@@ -90,6 +90,10 @@ class Item:
             
     def remove_todays_price_entry(self):
         del self.price_data[-1]
+        
+    def sort_price_data(self):
+        sorted_data = sorted(self.price_data, key=lambda entry: entry[0])
+        self.price_data = sorted_data
             
     def to_string(self):
         """ Convert item's data attributes into formatted string for saving """

@@ -5,6 +5,7 @@ Created on Wed May 20 17:40:02 2020
 
 @author: JamesButcher
 """
+import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
@@ -28,32 +29,104 @@ def access_webpage(url):
     return s
         
 
-def convert_price_data_to_training_set(item):
+#def convert_price_data_to_training_set(item):
+#    """ Load the price data of item and add all other feature data to it
+#        to create training examples for machine learning algorithm.
+#        Example: 
+#         item.price_data :        data : <DataFrame>: {
+#               <List>                    "Date" "Price" "Key1"  "Key2" ...
+#          [ (2-10-20, 1.99)             (2-10-20, 1.99, 2400000, 49.9, ... )
+#            (2-28-20, 1.99)     --->    (2-28-20, 1.99, 2830000, 42.9, ... )   
+#            (3-12-20, 2.29)             (3-12-20, 2.29, 3400000, 37.3, ... )
+#                  .                                     .
+#                  .         ]                           .                   }
+#    """
+#    data = pd.DataFrame()
+#    
+#    dates = [entry[0] for entry in item.price_data]
+#    data["Date"] = dates
+#    data["Price"] = [entry[1] for entry in item.price_data]
+#
+#    econ_data = obtain_econ_data(dates)
+#        
+#    for key in econ_sources.keys():
+#        data[key] = econ_data[key]
+#        
+#    print(data)
+#    
+#    return data
+
+
+def convert_price_data_to_training_set(item, timeframe):
     """ Load the price data of item and add all other feature data to it
         to create training examples for machine learning algorithm.
         Example: 
-         item.price_data :        data : <DataFrame>: {
-               <List>                    "Date" "Price" "Key1"  "Key2" ...
-          [ (2-10-20, 1.99)             (2-10-20, 1.99, 2400000, 49.9, ... )
-            (2-28-20, 1.99)     --->    (2-28-20, 1.99, 2830000, 42.9, ... )   
-            (3-12-20, 2.29)             (3-12-20, 2.29, 3400000, 37.3, ... )
+            
+         item.price_data :        data : 
+               <List>                       <DataFrame> 
+                                    { "Date" "Price" "Key1"  "Key2" ... "Y"
+          [ (2-10-20, 1.99)          (2-10-20, 1.99, 2400000, 49.9, ... 1.99)
+            (2-28-20, 1.99)   --->   (2-28-20, 1.99, 2830000, 42.9, ... 2.29)   
+            (3-12-20, 2.29)          (3-12-20, 2.29, 3400000, 37.3, ... 2.49)
                   .                                     .
-                  .         ]                           .                   }
+                  .         ]                           .                    }
     """
     data = pd.DataFrame()
     
+    # Add Date and Price columns
     dates = [entry[0] for entry in item.price_data]
     data["Date"] = dates
-    data["Price"] = [entry[1] for entry in item.price_data]
+    prices = [entry[1] for entry in item.price_data]
+    data["Price"] = prices
 
+    # Add the rest of the feature columns
     econ_data = obtain_econ_data(dates)
-        
-    for key in econ_sources.keys():
+    for key in econ_data.keys():
         data[key] = econ_data[key]
+        
+    # Add the groundtruth (Y-values) column
+    data["Y"] = generate_y_values(dates, prices, timeframe)
         
     print(data)
     
     return data
+
+
+def generate_y_values(dates, prices, timeframe, max_allowed_time_diff = 15):
+    """ Generate a list of y-values, consisting of prices for entries that are
+        closest to <timeframe> days in the future.
+        
+        If there are no other entries within the maximum allowed time
+        difference minus the timeframe for a given entry, then the y-value
+        for that entry is None. Thus it won't be used in the training set.
+    """
+    y_values = [None] * len(dates)
+    length = len(dates)
+    
+    # Simply use present prices if not trying to predict into the future
+    if timeframe == 0:
+        return prices
+
+    for entry_num in range(0, length-1):
+        print(entry_num)
+        print(range(entry_num+1, length))
+        # Find index of price entry closest away to future timeframe
+        time_diffs = [(dates[future_entry_num] - dates[entry_num]).days for \
+                      future_entry_num in range(entry_num+1, length)]
+        print("Time diffs before:", time_diffs)
+        time_diffs = abs(np.array(time_diffs) - timeframe)
+        print("Time diffs after:", time_diffs)
+        min_index = entry_num 
+        min_diff = time_diffs[0]
+        for k in range(1, len(time_diffs)):
+            if time_diffs[k] < min_diff:
+                min_diff = time_diffs[k]
+                min_index = entry_num + k
+        # Add the price of that entry at the y-value
+        if min_diff < max_allowed_time_diff:
+            y_values[entry_num] = prices[min_index + 1]
+        
+    return y_values
 
 
 def get_stlouisfed_data(url, dates):
