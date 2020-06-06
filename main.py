@@ -165,6 +165,12 @@ def load():
                 price = float(entry[1])
                 loaded_item.add_price_entry(shopping_date, price)
                 
+def predict():
+    # Get item from item list matching item description in selection box
+    item = item_list[item_predict_var.get()]
+    
+    print("Predicting: ", item.item_description)
+                
 def save(*args):
     """ Save all item data to item folder """
     print("Saving...")
@@ -457,10 +463,8 @@ predict_frame_title.grid(row=0, column=0)
 # Sub-frame of predict_frame:
 #   Control frame for selecting item and prediction parameters
 # =============================================================================
-
 predict_control_frame = Frame(predict_frame, borderwidth=4, relief="ridge")
 predict_control_frame.grid(row=1, column=0, padx=10, pady=10)
-
 
 def load_items(*args):
     """ 
@@ -478,7 +482,7 @@ item_select_box = Combobox(predict_control_frame, width=30,
 item_select_box.grid(row=0, column=1)
 load_items()
 
-predict_button = Button(predict_control_frame, text="Predict")
+predict_button = Button(predict_control_frame, text="Predict", command=predict)
 predict_button.grid(row=1, columnspan=2)
 
 
