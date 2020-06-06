@@ -9,8 +9,8 @@ Created on Fri Apr 10 14:22:44 2020
 from datetime import date
 from pathlib import Path
 from tkinter.ttk import  Combobox
-from tkinter import Button, Checkbutton, END, Entry, Frame, IntVar, \
-                    Label, StringVar, Tk
+from tkinter import BOTH, Button, Checkbutton, END, Entry, Frame, IntVar, \
+                    Label, LEFT, RIGHT, StringVar, Tk, W, X, Y
 from item import Item
 import data_analysis
 
@@ -29,7 +29,7 @@ def apply_new_item(*args):
     item_type = item_type_var.get()
     item_description = item_desc_var.get()
     item_unit_quantity = item_unit_var.get()
-    is_store_brand = to_boolean(item_sb_var.get())
+    is_store_brand = to_boolean(item_storebrand_var.get())
     store_name = store_var.get()
     store_location = location_var.get()
     
@@ -75,6 +75,9 @@ def apply_store_selection(*args):
             store_matched_items.append(i)
             # Create Item entry object for each item and add to item entries list
             item_entries.append(Item_entry(i))
+            
+    # Load items from store into the item selection box in predict frame
+    load_items()
 
 def enter_shopping_trip_data_manually():
     """ Use the keyboard to enter data manually.
@@ -309,16 +312,20 @@ store_var = StringVar()
 location_var = StringVar()
 item_type_var = StringVar()
 item_desc_var = StringVar()
+item_predict_var = StringVar()
 item_unit_var = StringVar()
-item_sb_var = IntVar()
+item_storebrand_var = IntVar()
+
 
 
 # =============================================================================
 # Entry frame: Main frame for entering new product and price info
 # =============================================================================
-entry_frame = Frame(root)
-entry_frame.pack(expand=1)
-entry_frame_title = Label(entry_frame, text="Enter data from shopping trip:")
+entry_frame = Frame(root, bg="#999999", borderwidth=4, relief="sunken")
+entry_frame.pack(side=LEFT, anchor=W, expand=1, fill=Y)
+entry_frame_title = Label(entry_frame, font=("Arial", 20, "bold"),
+                          fg="white", bg="#999999",
+                          text="Enter data from shopping trip:")
 entry_frame_title.grid(row=0, columnspan=2)
 
 
@@ -362,13 +369,13 @@ store_location_label.grid(row=2, column=0, sticky="W")
 store_location_entry_box = Combobox(store_frame, width=40, 
                                  textvariable=location_var)
 store_location_entry_box.grid(row=3, columnspan=2, padx=10, pady=10)
-store_location_entry_box.bind("<Return>", apply_store_selection)
+#store_location_entry_box.bind("<Return>", apply_store_selection)
+#store_location_entry_box.bind("<<ComboboxSelected>>", apply_store_selection)
 
 load_store_locations()
 
-store_enter_button = Button(store_frame, 
-                            text="Enter", 
-                            command=apply_store_selection)
+store_enter_button = Button(store_frame, text="Enter", command=apply_store_selection)
+                            #command=lambda:[apply_store_selection, load_items])
 store_enter_button.grid(row=4, columnspan=2)
 store_enter_button.bind("<Return>", apply_store_selection)
 
@@ -391,7 +398,7 @@ item_type_entry = Entry(new_frame, textvariable=item_type_var)
 item_type_entry.grid(row=1, column=1)
 
 item_desc_label = Label(new_frame, text="A more detailed description of "
-                        "the item\ne.g.: brand name red delicious apples")
+                        "the item\ne.g.: (brand name red delicious apples)")
 item_desc_label.grid(row=2, column=0, sticky="W")  
 item_desc_entry = Entry(new_frame, textvariable=item_desc_var)
 item_desc_entry.grid(row=2, column=1)
@@ -402,15 +409,15 @@ item_unit_label.grid(row=3, column=0, sticky="W")
 item_unit_entry = Entry(new_frame, textvariable=item_unit_var)
 item_unit_entry.grid(row=3, column=1)
     
-def toggle_sb_checkbox(*args):
+def toggle_storebrand_checkbox(*args):
     item_sb_checkbox.toggle()
 
 item_sb_label = Label(new_frame, text="Is the item a store brand?:")
 item_sb_label.grid(row=4, column=0, sticky="W")
-item_sb_checkbox = Checkbutton(new_frame, variable=item_sb_var)
-item_sb_checkbox.var = item_sb_var
+item_sb_checkbox = Checkbutton(new_frame, variable=item_storebrand_var)
+item_sb_checkbox.var = item_storebrand_var
 item_sb_checkbox.grid(row=4, column=1, sticky="W")
-item_sb_checkbox.bind("<Return>", toggle_sb_checkbox)
+item_sb_checkbox.bind("<Return>", toggle_storebrand_checkbox)
 
 item_enter_button = Button(new_frame, text="Enter", command=apply_new_item)                  
 item_enter_button.grid(row=5)
@@ -435,7 +442,44 @@ save_button.bind("<Return>", save)
 saved_label = Label(entry_frame, text="Saved", foreground="blue")
 
 
+# =============================================================================
+# Prediction frame: Main frame for making predictions about item prices
+# =============================================================================
+predict_frame = Frame(root, bg="#999999", borderwidth=4, relief="sunken")
+predict_frame.pack(side=LEFT, fill=Y, expand=1)
 
+predict_frame_title = Label(predict_frame, font=("Arial", 20, "bold"),
+                            fg="white", bg="#999999",
+                            text="Make Price Predictions:")
+predict_frame_title.grid(row=0, column=0)
+
+# =============================================================================
+# Sub-frame of predict_frame:
+#   Control frame for selecting item and prediction parameters
+# =============================================================================
+
+predict_control_frame = Frame(predict_frame, borderwidth=4, relief="ridge")
+predict_control_frame.grid(row=1, column=0, padx=10, pady=10)
+
+
+def load_items(*args):
+    """ 
+    """
+    items = {i.item_description for i in item_list.values() if \
+             i.store_name == store_var.get() and \
+             i.store_location == location_var.get()}
+    item_select_box["values"] = tuple(items)
+    item_select_box.current(0)
+
+item_select_label = Label(predict_control_frame, text="Select item:")
+item_select_label.grid(row=0, column=0)
+item_select_box = Combobox(predict_control_frame, width=30,
+                           textvariable=item_predict_var)
+item_select_box.grid(row=0, column=1)
+load_items()
+
+predict_button = Button(predict_control_frame, text="Predict")
+predict_button.grid(row=1, columnspan=2)
 
 
 
@@ -451,8 +495,8 @@ saved_label = Label(entry_frame, text="Saved", foreground="blue")
 
 #data_analysis.convert_price_data_to_training_set(list(item_list.values())[2])
 
-for item in item_list.values():
-    generate_training_set(item, 60)
+#for item in item_list.values():
+#    generate_training_set(item, 60)
 
 
 

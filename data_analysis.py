@@ -27,34 +27,6 @@ def access_webpage(url):
     response = requests.get(url)
     s = BeautifulSoup(response.text, 'html.parser')
     return s
-        
-
-#def convert_price_data_to_training_set(item):
-#    """ Load the price data of item and add all other feature data to it
-#        to create training examples for machine learning algorithm.
-#        Example: 
-#         item.price_data :        data : <DataFrame>: {
-#               <List>                    "Date" "Price" "Key1"  "Key2" ...
-#          [ (2-10-20, 1.99)             (2-10-20, 1.99, 2400000, 49.9, ... )
-#            (2-28-20, 1.99)     --->    (2-28-20, 1.99, 2830000, 42.9, ... )   
-#            (3-12-20, 2.29)             (3-12-20, 2.29, 3400000, 37.3, ... )
-#                  .                                     .
-#                  .         ]                           .                   }
-#    """
-#    data = pd.DataFrame()
-#    
-#    dates = [entry[0] for entry in item.price_data]
-#    data["Date"] = dates
-#    data["Price"] = [entry[1] for entry in item.price_data]
-#
-#    econ_data = obtain_econ_data(dates)
-#        
-#    for key in econ_sources.keys():
-#        data[key] = econ_data[key]
-#        
-#    print(data)
-#    
-#    return data
 
 
 def convert_price_data_to_training_set(item, timeframe):
@@ -97,8 +69,23 @@ def generate_y_values(dates, prices, timeframe, max_allowed_time_diff = 15):
         closest to <timeframe> days in the future.
         
         If there are no other entries within the maximum allowed time
-        difference minus the timeframe for a given entry, then the y-value
+        difference from the timeframe for a given entry, then the y-value
         for that entry is None. Thus it won't be used in the training set.
+        
+        Example:    timeframe = 60, max_allowed-time_diff = 15
+            
+                     Date  Price               Y
+            0  2019-05-24   2.59      /---> 5.00   (Entry 3 is 13 days off +60)
+            1  2019-05-28   0.99     /----> 5.00   (Entry 3 is 9 days off +60)
+            2  2019-06-21   1.85    /        NaN
+            3  2019-08-05   5.00 ---  /---> 4.33   (Entry 4 is 14 days off +60)
+            4  2019-09-20   4.33 -----       NaN
+            5  2020-02-24   2.89        /-> 3.29   (Entry 7 is 1 day off +60)
+            6  2020-04-11  13.19       /     NaN
+            7  2020-04-25   3.29 ------      NaN
+            8  2020-05-10   3.49             NaN
+            9  2020-05-18   1.99             NaN
+        
     """
     y_values = [None] * len(dates)
     length = len(dates)
@@ -106,23 +93,24 @@ def generate_y_values(dates, prices, timeframe, max_allowed_time_diff = 15):
     # Simply use present prices if not trying to predict into the future
     if timeframe == 0:
         return prices
-
+    
     for entry_num in range(0, length-1):
-        print(entry_num)
-        print(range(entry_num+1, length))
-        # Find index of price entry closest away to future timeframe
+        
+        # Create list of time differences between entry and future entries
         time_diffs = [(dates[future_entry_num] - dates[entry_num]).days for \
                       future_entry_num in range(entry_num+1, length)]
-        print("Time diffs before:", time_diffs)
+        # Transform differences into distance away from exact timeframe
         time_diffs = abs(np.array(time_diffs) - timeframe)
-        print("Time diffs after:", time_diffs)
+        
+        # Find index of price entry closest to timeframe (minimum abs distance)
         min_index = entry_num 
         min_diff = time_diffs[0]
-        for k in range(1, len(time_diffs)):
-            if time_diffs[k] < min_diff:
-                min_diff = time_diffs[k]
-                min_index = entry_num + k
-        # Add the price of that entry at the y-value
+        for i in range(1, len(time_diffs)):
+            if time_diffs[i] < min_diff:
+                min_diff = time_diffs[i]
+                min_index = entry_num + i
+                
+        # If within range, set y-value equal to price at that index
         if min_diff < max_allowed_time_diff:
             y_values[entry_num] = prices[min_index + 1]
         
