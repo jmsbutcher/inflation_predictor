@@ -205,35 +205,58 @@ def predict_single_item(item, timeframe, polynomial_order=1):
     
     # Generate training set
     training_set = convert_price_data_to_training_set(item, timeframe)
+    features = training_set.keys()
     
-    # Add polynomial terms
-    if polynomial_order > 1:
-        keys_copy = training_set.keys()
-        for feature in keys_copy:
-            if feature == "Y":
-                    break
-            for exponent in range(2, polynomial_order + 1):
+    for feature in features:
+        if feature == "Date" or feature == "Price":
+            continue
+        if feature == "Y":
+            break
+        col = training_set[feature]
+        
+        # Feature scaling
+        
+        # Regular mean normalization (will include negative values)
+        #col = (col - col.mean()) / col.std()
+        
+        # Mean normalization between range a and b (all positive to allow sqrt)
+        a = 0.001
+        b = 2.999
+        col = a + ((col - col.min())*(b - a) / (col.max() - col.min()))
+
+        training_set[feature] = col
+        print("After normalization:\n", training_set)
+    
+        # Add polynomial terms
+        if polynomial_order > 1:
+            
+            exponents = [e for e in range(2, polynomial_order + 1)]
+            # Add a square root term
+            exponents.append(1/2)
+            for exponent in exponents:
                 # New feature column: "Date^2", "Price^2", "CPI^2", etc.
                 feature_with_exponent = "^".join([feature, str(exponent)])
                 
-                if feature == "Date":
-                    dates = training_set["Date"]
-                    # Compute timedeltas since earliest date in days
-                    days_since_earliest = dates - dates[0]
-                    # Convert timedeltas to ints so they can be exponentiated
-                    exponentiated_days = pd.Series([d.days ** exponent for 
-                                                    d in days_since_earliest])            
-                    # Convert exponentiated days back into timedeltas
-                    time_deltas = pd.Series([datetime.timedelta(days=d) for
-                                            d in exponentiated_days])
-                    training_set[feature_with_exponent] = dates + time_deltas
+#                if feature == "Date":
+#                    dates = training_set["Date"]
+#                    # Compute timedeltas since earliest date in days
+#                    days_since_earliest = dates - dates[0]
+#                    # Convert timedeltas to ints so they can be exponentiated
+#                    exponentiated_days = pd.Series([int(d.days ** exponent) for 
+#                                                    d in days_since_earliest])
+#                    print(exponentiated_days)            
+#                    # Convert exponentiated days back into timedeltas
+#                    time_deltas = pd.Series([datetime.timedelta(days=d) for
+#                                            d in exponentiated_days])
+#                    print("Timedeltas:", time_deltas)
+#                    training_set[feature_with_exponent] = dates + time_deltas
+#                else:
+                
+                training_set[feature_with_exponent] = training_set[feature] ** exponent
 
-                else:
-                    training_set[feature_with_exponent] = training_set[feature] ** exponent
     print(training_set)    
     print(training_set.columns)
     
-    # Normalize
     
     # Regularized linear regression
     
