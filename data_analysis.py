@@ -5,11 +5,12 @@ Created on Wed May 20 17:40:02 2020
 
 @author: JamesButcher
 """
+import datetime
+from datetime import date
 import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from datetime import date
 
 econ_sources = {"CPI": "https://fred.stlouisfed.org/data/CPIAUCNS.txt",
                 "GDP": "https://fred.stlouisfed.org/data/A191RL1Q225SBEA.txt",
@@ -198,4 +199,51 @@ def obtain_econ_data(dates):
 #        print()
         
     return econ_data
+
+
+def predict_single_item(item, timeframe, polynomial_order=1):
+    
+    # Generate training set
+    training_set = convert_price_data_to_training_set(item, timeframe)
+    
+    # Add polynomial terms
+    if polynomial_order > 1:
+        keys_copy = training_set.keys()
+        for feature in keys_copy:
+            if feature == "Y":
+                    break
+            for exponent in range(2, polynomial_order + 1):
+                # New feature column: "Date^2", "Price^2", "CPI^2", etc.
+                feature_with_exponent = "^".join([feature, str(exponent)])
+                
+                if feature == "Date":
+                    dates = training_set["Date"]
+                    # Compute timedeltas since earliest date in days
+                    days_since_earliest = dates - dates[0]
+                    # Convert timedeltas to ints so they can be exponentiated
+                    exponentiated_days = pd.Series([d.days ** exponent for 
+                                                    d in days_since_earliest])            
+                    # Convert exponentiated days back into timedeltas
+                    time_deltas = pd.Series([datetime.timedelta(days=d) for
+                                            d in exponentiated_days])
+                    training_set[feature_with_exponent] = dates + time_deltas
+
+                else:
+                    training_set[feature_with_exponent] = training_set[feature] ** exponent
+    print(training_set)    
+    print(training_set.columns)
+    
+    # Normalize
+    
+    # Regularized linear regression
+    
+    
+    
+    
+    
+
+
+
+
+
 

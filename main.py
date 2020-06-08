@@ -10,7 +10,7 @@ from datetime import date
 from pathlib import Path
 from tkinter.ttk import  Combobox
 from tkinter import BOTH, Button, Checkbutton, END, Entry, Frame, IntVar, \
-                    Label, LEFT, RIGHT, StringVar, Tk, W, X, Y
+                    Label, LEFT, RIGHT, Spinbox, StringVar, Tk, E, W, X, Y
 from item import Item
 import data_analysis
 
@@ -21,7 +21,7 @@ item_list = {}
 # =============================================================================
 # General functions
 # =============================================================================
-def apply_new_item(*args):
+def apply_new_item(*events):
     """ Create a new item using the info entered in the new item frame and
         add it to the item list.
     """
@@ -49,7 +49,7 @@ def apply_new_item(*args):
     # Move text entry focus back to top for fast data entry
     item_type_entry.focus_set()
     
-def apply_store_selection(*args):
+def apply_store_selection(*events):
     """ Search the item list for all items that match the store name
         and location selected and generate Item_entrys for each.
     """
@@ -168,10 +168,18 @@ def load():
 def predict():
     # Get item from item list matching item description in selection box
     item = item_list[item_predict_var.get()]
+    # Get timeframe in days from timeframe selection box
+    timeframe = timeframes[timeframe_var.get()]
+    # Get polynomial order from spinbox
+    polynomial_order = int(polynomial_order_spinbox.get())
     
-    print("Predicting: ", item.item_description)
+    print("Predicting:", item.item_description)
+    print("Timeframe:", timeframe, "days")
+    print("Polynomial order:", polynomial_order)
+    
+    data_analysis.predict_single_item(item, timeframe, polynomial_order)
                 
-def save(*args):
+def save(*events):
     """ Save all item data to item folder """
     print("Saving...")
     folder = Path.cwd() / "items"
@@ -230,7 +238,7 @@ class Item_entry:
         else:
             self.generate_price_label_box()
             
-    def apply_price_entry(self, *args):
+    def apply_price_entry(self, *events):
         """ Enter the price in the entry box to the item's price list """
         # Remove blue "Saved" message, indicating a new saveable change
         saved_label.grid_remove()
@@ -252,7 +260,7 @@ class Item_entry:
     def destroy(self):
         self.item_frame.destroy()
         
-    def edit(self, *args):
+    def edit(self, *events):
         """ Remove today's price entry from item object and allow you to enter
             a new price 
         """
@@ -321,6 +329,7 @@ item_desc_var = StringVar()
 item_predict_var = StringVar()
 item_unit_var = StringVar()
 item_storebrand_var = IntVar()
+timeframe_var = StringVar()
 
 
 
@@ -351,7 +360,7 @@ date_entry_box.grid(row=0, column=1)
 store_label = Label(store_frame, text="Store name:")
 store_label.grid(row=1, column=0, sticky="W")
 
-def load_store_locations(*args):
+def load_store_locations(*events):
     """ Create a set of store locations that contains all the store locations
         saved in the item list for the store name currently selected in the 
         store selection combobox, and list those store locations in the 
@@ -415,7 +424,7 @@ item_unit_label.grid(row=3, column=0, sticky="W")
 item_unit_entry = Entry(new_frame, textvariable=item_unit_var)
 item_unit_entry.grid(row=3, column=1)
     
-def toggle_storebrand_checkbox(*args):
+def toggle_storebrand_checkbox(*events):
     item_sb_checkbox.toggle()
 
 item_sb_label = Label(new_frame, text="Is the item a store brand?:")
@@ -466,7 +475,7 @@ predict_frame_title.grid(row=0, column=0)
 predict_control_frame = Frame(predict_frame, borderwidth=4, relief="ridge")
 predict_control_frame.grid(row=1, column=0, padx=10, pady=10)
 
-def load_items(*args):
+def load_items(*events):
     """ 
     """
     items = {i.item_description for i in item_list.values() if \
@@ -476,14 +485,33 @@ def load_items(*args):
     item_select_box.current(0)
 
 item_select_label = Label(predict_control_frame, text="Select item:")
-item_select_label.grid(row=0, column=0)
+item_select_label.grid(row=0, column=0, sticky=W)
 item_select_box = Combobox(predict_control_frame, width=30,
                            textvariable=item_predict_var)
-item_select_box.grid(row=0, column=1)
+item_select_box.grid(row=0, column=1, sticky=W)
 load_items()
 
+timeframe_select_label = Label(predict_control_frame, text="Select timeframe:")
+timeframe_select_label.grid(row=1, column=0, sticky=W)
+timeframe_select_box = Combobox(predict_control_frame, 
+                                textvariable=timeframe_var)
+timeframe_select_box.grid(row=1, column=1, sticky=W)
+timeframes = {"Price today":        0,
+              "1 month from now":   30,
+              "3 months from now":  91,
+              "1 year from now":    365,
+              "3 years from now":   1096,
+              "10 years from now":  3652}
+timeframe_select_box["values"] = tuple(timeframes.keys())
+timeframe_select_box.current(0)
+
+polynomial_order_label = Label(predict_control_frame, text="Polynomial order:")
+polynomial_order_label.grid(row=2, column=0, sticky=W)
+polynomial_order_spinbox = Spinbox(predict_control_frame, from_=1, to=5, width=2)
+polynomial_order_spinbox.grid(row=2, column=1, sticky=W)
+
 predict_button = Button(predict_control_frame, text="Predict", command=predict)
-predict_button.grid(row=1, columnspan=2)
+predict_button.grid(row=3, columnspan=2, sticky=E)
 
 
 
