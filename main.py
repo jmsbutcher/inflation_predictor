@@ -10,9 +10,13 @@ from datetime import date
 from pathlib import Path
 from tkinter.ttk import  Combobox
 from tkinter import BOTH, Button, Checkbutton, END, Entry, Frame, IntVar, \
-                    Label, LEFT, RIGHT, Spinbox, StringVar, Tk, E, W, X, Y
+                    Label, LEFT, RIGHT, Spinbox, StringVar, Tk, TOP, N, S, E, W, X, Y
 from item import Item
 import data_analysis
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import numpy as np
 
 # Dictionary of Item objects --- { [Item.item_description1] : [Item1], ...  }
 item_list = {}
@@ -164,7 +168,73 @@ def load():
                 shopping_date = date.fromisoformat(entry[0])
                 price = float(entry[1])
                 loaded_item.add_price_entry(shopping_date, price)
-                
+ 
+def plot(item):
+#    plt.figure()
+#    plt.title("Price trend for {}".format(item.item_description))
+#    x = [entry[0] for entry in item.price_data]
+#    y = [entry[1] for entry in item.price_data]
+#    plt.scatter(x, y)
+#    plt.xlabel("Date")
+#    plt.ylabel("Price")
+#    plt.grid(True)
+    
+    
+#    x = [entry[0] for entry in item.price_data]
+#    y = [entry[1] for entry in item.price_data]
+#    fig, ax = plt.subplots()
+#
+#    plt.scatter(x, y)
+#    plt.title("Price trend for {}".format(item.item_description))
+#    plt.xlabel("Date")
+#    plt.ylabel("Price in $")
+#    
+#    years = mdates.YearLocator()
+#    months = mdates.MonthLocator()
+#    years_format = mdates.DateFormatter("%Y")
+#    months_format = mdates.DateFormatter("%b")
+#    ax.xaxis.set_major_locator(years)
+#    ax.xaxis.set_major_formatter(years_format)
+#    ax.xaxis.set_minor_locator(months)
+#    ax.xaxis.set_minor_formatter(months_format)
+#    
+#    ax.tick_params(which="major", length=16, width=2)
+#    ax.tick_params(which="minor", length=4, width=2, color="b")
+#
+#    plt.grid(True)
+#    
+#    plt.show()
+    
+    x = [entry[0] for entry in item.price_data]
+    y = [entry[1] for entry in item.price_data]
+    ax = plot_figure.add_subplot()
+#    fig, ax = plt.subplots()
+    
+    ax.plot(x, y, 'bo')
+    ax.set_title("Price trend for {}".format(item.item_description), fontsize=18)
+    ax.set_xlabel("Date", fontsize=16)
+    ax.set_ylabel("Price in $", fontsize=16)
+    
+    years = mdates.YearLocator()
+    months = mdates.MonthLocator()
+    years_format = mdates.DateFormatter("%Y")
+    months_format = mdates.DateFormatter("%b")
+    ax.xaxis.set_major_locator(years)
+    ax.xaxis.set_major_formatter(years_format)
+    ax.xaxis.set_minor_locator(months)
+    ax.xaxis.set_minor_formatter(months_format)
+    
+    ax.tick_params(which="major", length=16, width=1)
+    ax.tick_params(which="minor", length=4, width=2, color="b")
+
+    ax.grid(True)
+    
+    plot_canvas.draw()
+    
+    toolbar.update()
+    
+#    plt.show()
+               
 def predict():
     # Get item from item list matching item description in selection box
     item = item_list[item_predict_var.get()]
@@ -178,6 +248,8 @@ def predict():
     print("Polynomial order:", polynomial_order)
     
     data_analysis.predict_single_item(item, timeframe, polynomial_order)
+    
+    plot(item)
                 
 def save(*events):
     """ Save all item data to item folder """
@@ -445,7 +517,7 @@ item_enter_button.bind("<Return>", apply_new_item)
 #   Used for price entry
 # =============================================================================
 exis_item_frame = Frame(entry_frame, borderwidth=4, relief="ridge")
-exis_item_frame.grid(row=1, rowspan=2, column=1, padx=5, pady=5)
+exis_item_frame.grid(row=1, rowspan=2, column=1, padx=5, pady=5, sticky=N)
 
 # Save button that writes all item and their corresponding price data 
 #   to files in the items folder
@@ -461,12 +533,13 @@ saved_label = Label(entry_frame, text="Saved", foreground="blue")
 # Prediction frame: Main frame for making predictions about item prices
 # =============================================================================
 predict_frame = Frame(root, bg="#999999", borderwidth=4, relief="sunken")
-predict_frame.pack(side=LEFT, fill=Y, expand=1)
+predict_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
 predict_frame_title = Label(predict_frame, font=("Arial", 20, "bold"),
                             fg="white", bg="#999999",
                             text="Make Price Predictions:")
 predict_frame_title.grid(row=0, column=0)
+
 
 # =============================================================================
 # Sub-frame of predict_frame:
@@ -513,6 +586,38 @@ polynomial_order_spinbox.grid(row=2, column=1, sticky=W)
 predict_button = Button(predict_control_frame, text="Predict", command=predict)
 predict_button.grid(row=3, columnspan=2, sticky=E)
 
+
+# =============================================================================
+# Sub-frame of predict frame:
+#   Plot
+# =============================================================================
+
+plot_frame = Frame(predict_frame, borderwidth=2, relief="sunken")
+plot_frame.grid(row=2, column=0, padx=10, pady=10)
+
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.figure import Figure
+matplotlib.use("TkAgg")
+
+plot_figure = Figure(figsize=(7, 6), dpi=80)
+
+plot_canvas = FigureCanvasTkAgg(plot_figure, master=plot_frame)
+plot_canvas.draw()
+plot_canvas.get_tk_widget().pack(fill=BOTH, expand=1)
+
+toolbar = NavigationToolbar2Tk(plot_canvas, plot_frame)
+toolbar.update()
+plot_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
+
+
+def on_key_press(event):
+    print("you pressed {}".format(event.key))
+    key_press_handler(event, plot_canvas, toolbar)
+
+
+plot_canvas.mpl_connect("key_press_event", on_key_press)
 
 
 

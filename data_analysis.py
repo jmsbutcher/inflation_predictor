@@ -215,7 +215,7 @@ def predict_single_item(item, timeframe, polynomial_order=1):
         col = training_set[feature]
         
         # Feature scaling
-        
+
         # Regular mean normalization (will include negative values)
         #col = (col - col.mean()) / col.std()
         
