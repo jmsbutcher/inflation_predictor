@@ -12,6 +12,7 @@ from tkinter.ttk import  Combobox
 from tkinter import BOTH, Button, Checkbutton, END, Entry, Frame, IntVar, \
                     Label, LEFT, RIGHT, Spinbox, StringVar, Tk, TOP, N, S, E, W, X, Y
 from item import Item
+import datetime
 import data_analysis
 import matplotlib
 import matplotlib.pyplot as plt
@@ -59,6 +60,9 @@ def apply_store_selection(*events):
     """
     # Remove blue "Saved" message, indicating a new saveable change
     saved_label.grid_remove()
+    # Remove any existing plots from prediction frame
+    ax.cla()
+    
     # Reset the item entry frame
     del item_entries[:]
     existing = exis_item_frame.winfo_children()
@@ -169,56 +173,43 @@ def load():
                 price = float(entry[1])
                 loaded_item.add_price_entry(shopping_date, price)
  
-def plot(item):
-#    plt.figure()
-#    plt.title("Price trend for {}".format(item.item_description))
-#    x = [entry[0] for entry in item.price_data]
-#    y = [entry[1] for entry in item.price_data]
-#    plt.scatter(x, y)
-#    plt.xlabel("Date")
-#    plt.ylabel("Price")
-#    plt.grid(True)
+def plot_prices(item, timeframe, polynomial_order):
     
-    
-#    x = [entry[0] for entry in item.price_data]
-#    y = [entry[1] for entry in item.price_data]
-#    fig, ax = plt.subplots()
-#
-#    plt.scatter(x, y)
-#    plt.title("Price trend for {}".format(item.item_description))
-#    plt.xlabel("Date")
-#    plt.ylabel("Price in $")
-#    
-#    years = mdates.YearLocator()
-#    months = mdates.MonthLocator()
-#    years_format = mdates.DateFormatter("%Y")
-#    months_format = mdates.DateFormatter("%b")
-#    ax.xaxis.set_major_locator(years)
-#    ax.xaxis.set_major_formatter(years_format)
-#    ax.xaxis.set_minor_locator(months)
-#    ax.xaxis.set_minor_formatter(months_format)
-#    
-#    ax.tick_params(which="major", length=16, width=2)
-#    ax.tick_params(which="minor", length=4, width=2, color="b")
-#
-#    plt.grid(True)
-#    
-#    plt.show()
-    
+    # Clear any previous plot
+    ax.cla()
+
+    # x = Dates, y = Prices
     x = [entry[0] for entry in item.price_data]
     y = [entry[1] for entry in item.price_data]
-    ax = plot_figure.add_subplot()
-#    fig, ax = plt.subplots()
     
-    ax.plot(x, y, 'bo')
+    timerange = (max(x) - min(x)).days + timeframe
+    
+    ax.plot(x, y, 'bo-')
+    
     ax.set_title("Price trend for {}".format(item.item_description), fontsize=18)
     ax.set_xlabel("Date", fontsize=16)
     ax.set_ylabel("Price in $", fontsize=16)
     
+    x_lower_bound = min(x) - datetime.timedelta(days=int(0.05*timerange))
+    print(x_lower_bound)
+    x_upper_bound = max(x) + datetime.timedelta(days=timeframe+int(0.05*timerange))
+    print(x_upper_bound)
+    
+    ax.set_xlim([x_lower_bound, x_upper_bound])
+    
     years = mdates.YearLocator()
     months = mdates.MonthLocator()
-    years_format = mdates.DateFormatter("%Y")
-    months_format = mdates.DateFormatter("%b")
+    
+    if timerange > 1000:
+        years_format = mdates.DateFormatter("'%y")
+        months_format = mdates.DateFormatter("")
+    elif timerange > 500:
+        years_format = mdates.DateFormatter("%Y")
+        months_format = mdates.DateFormatter("")
+    else:
+        years_format = mdates.DateFormatter("%Y")
+        months_format = mdates.DateFormatter("%b")
+    
     ax.xaxis.set_major_locator(years)
     ax.xaxis.set_major_formatter(years_format)
     ax.xaxis.set_minor_locator(months)
@@ -226,16 +217,49 @@ def plot(item):
     
     ax.tick_params(which="major", length=16, width=1)
     ax.tick_params(which="minor", length=4, width=2, color="b")
-
+    
     ax.grid(True)
     
     plot_canvas.draw()
     
     toolbar.update()
     
-#    plt.show()
+    if to_boolean(show_trendline_var.get()):
+        plot_price_trend(x, y, order=polynomial_order, timeframe=timeframe)
+    
+    
+def plot_price_trend(x, y, order=3, timeframe=10):
+    earliest_date = min(x)
+    latest_date = max(x) + datetime.timedelta(days=timeframe)
+    
+    daterange = latest_date - earliest_date
+    dayrange = daterange.days
+    num_bins = 50
+    stride = int(dayrange / num_bins)
+    
+    # Convert list of dates into int list of days since first date
+    days_since_earliest = []
+    for d in x:
+        elapsed = d - x[0]
+        days_since_earliest.append(elapsed.days)
+    
+    regression_model = np.poly1d(np.polyfit(days_since_earliest, y, order))
+    
+    x_line = list(range(0, dayrange + timeframe, stride))
+    
+    date_line = []
+#    for i in range(num_bins + timeframe):
+    for i in range(len(x_line)):
+        date_point = earliest_date + datetime.timedelta(days=i*stride)
+        date_line.append(date_point)
+        
+#    date_line = [min(x) + datetime.timedelta(days=i * stride) for 
+#                 i in range(num_bins + timeframe)]
+    
+    ax.plot(date_line, regression_model(x_line), "k--")
+    plot_canvas.draw()
                
-def predict():
+def predict(*events):
     # Get item from item list matching item description in selection box
     item = item_list[item_predict_var.get()]
     # Get timeframe in days from timeframe selection box
@@ -249,7 +273,7 @@ def predict():
     
     data_analysis.predict_single_item(item, timeframe, polynomial_order)
     
-    plot(item)
+    plot_prices(item, timeframe, polynomial_order)
                 
 def save(*events):
     """ Save all item data to item folder """
@@ -402,6 +426,7 @@ item_predict_var = StringVar()
 item_unit_var = StringVar()
 item_storebrand_var = IntVar()
 timeframe_var = StringVar()
+show_trendline_var = IntVar()
 
 
 
@@ -561,14 +586,14 @@ item_select_label = Label(predict_control_frame, text="Select item:")
 item_select_label.grid(row=0, column=0, sticky=W)
 item_select_box = Combobox(predict_control_frame, width=30,
                            textvariable=item_predict_var)
-item_select_box.grid(row=0, column=1, sticky=W)
+item_select_box.grid(row=0, column=1, columnspan=3, sticky=W)
 load_items()
 
 timeframe_select_label = Label(predict_control_frame, text="Select timeframe:")
 timeframe_select_label.grid(row=1, column=0, sticky=W)
 timeframe_select_box = Combobox(predict_control_frame, 
                                 textvariable=timeframe_var)
-timeframe_select_box.grid(row=1, column=1, sticky=W)
+timeframe_select_box.grid(row=1, column=1, columnspan=3, sticky=W)
 timeframes = {"Price today":        0,
               "1 month from now":   30,
               "3 months from now":  91,
@@ -583,6 +608,18 @@ polynomial_order_label.grid(row=2, column=0, sticky=W)
 polynomial_order_spinbox = Spinbox(predict_control_frame, from_=1, to=5, width=2)
 polynomial_order_spinbox.grid(row=2, column=1, sticky=W)
 
+def toggle_show_trendline_checkbox(*events):
+    show_trendline_checkbox.toggle()
+
+show_trendline_label = Label(predict_control_frame, text="Show price trendline:")
+show_trendline_label.grid(row=2, column=2)
+show_trendline_checkbox = Checkbutton(predict_control_frame,
+                                      variable=show_trendline_var,
+                                      command=predict)
+show_trendline_checkbox.var = show_trendline_var
+show_trendline_checkbox.grid(row=2, column=3)
+show_trendline_checkbox.bind("<Return>", toggle_show_trendline_checkbox)
+
 predict_button = Button(predict_control_frame, text="Predict", command=predict)
 predict_button.grid(row=3, columnspan=2, sticky=E)
 
@@ -595,6 +632,7 @@ predict_button.grid(row=3, columnspan=2, sticky=E)
 plot_frame = Frame(predict_frame, borderwidth=2, relief="sunken")
 plot_frame.grid(row=2, column=0, padx=10, pady=10)
 
+# For embedding Matplotlib Figure into Tkinter Frame
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from matplotlib.backend_bases import key_press_handler
@@ -604,7 +642,7 @@ matplotlib.use("TkAgg")
 plot_figure = Figure(figsize=(7, 6), dpi=80)
 
 plot_canvas = FigureCanvasTkAgg(plot_figure, master=plot_frame)
-plot_canvas.draw()
+#plot_canvas.draw()
 plot_canvas.get_tk_widget().pack(fill=BOTH, expand=1)
 
 toolbar = NavigationToolbar2Tk(plot_canvas, plot_frame)
@@ -618,6 +656,10 @@ def on_key_press(event):
 
 
 plot_canvas.mpl_connect("key_press_event", on_key_press)
+
+ax = plot_figure.add_subplot()
+
+
 
 
 
