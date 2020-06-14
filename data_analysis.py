@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+from sklearn import linear_model
 
 econ_sources = {"CPI": "https://fred.stlouisfed.org/data/CPIAUCNS.txt",
                 "GDP": "https://fred.stlouisfed.org/data/A191RL1Q225SBEA.txt",
@@ -46,10 +47,16 @@ def convert_price_data_to_training_set(item, timeframe):
     """
     data = pd.DataFrame()
     
-    # Add Date and Price columns
+    # Add Date Columns
     dates = [entry[0] for entry in item.price_data]
+    # Add today's date to use for prediction
+    dates.append(date.today())
     data["Date"] = dates
+    
+    # Add Price Column
     prices = [entry[1] for entry in item.price_data]
+    # Add dummy value to use for prediction
+    prices.append(None)
     data["Price"] = prices
 
     # Add the rest of the feature columns
@@ -201,7 +208,10 @@ def obtain_econ_data(dates):
     return econ_data
 
 
-def predict_single_item(item, timeframe, polynomial_order=1):
+def predict_single_item(item, 
+                        timeframe=0, 
+                        polynomial_order=1, 
+                        regularization_coeff=0):
     
     # Generate training set
     training_set = convert_price_data_to_training_set(item, timeframe)
@@ -253,14 +263,59 @@ def predict_single_item(item, timeframe, polynomial_order=1):
 #                else:
                 
                 training_set[feature_with_exponent] = training_set[feature] ** exponent
-
+                
     print(training_set)    
     print(training_set.columns)
     
-    
     # Regularized linear regression
+#    y = training_set["Y"]
+    x = training_set.copy(deep=False)
+#    del x["Price"]
+#    del x["Y"]
     
+    # Convert dates to integers denoting days since earliest date
+    earliest_date = min(x["Date"])
+    days_since_earliest = []
+    for date_entry in x["Date"]:
+        days_since_earliest.append((date_entry - earliest_date).days)
+    x["Date"] = days_since_earliest
     
+    y = training_set["Y"]
+    y = y.drop([len(y) - 1])
+#    del x["Price"]
+#    del x["Y"]
+    x = x.drop(["Price", "Y"], axis=1)
+    
+    # Extract last row to use for prediction
+    prediction_input = x[-1:]
+    x = x.drop([len(x) - 1])
+    
+    # Remove rows with null values
+    x.dropna()
+    
+    print("Training set after processing:\n", x)
+    print("Prediction input:\n", prediction_input)
+    
+    # Train model
+    reg = linear_model.Ridge(alpha=regularization_coeff)
+    reg.fit(x, y)
+    
+    # Generate input row for today's date
+#    todays_days_since_earliest = (date.today() - earliest_date).days
+#    print("Days:", todays_days_since_earliest)
+#    prediction_input = obtain_econ_data([date.today()])
+#    print("Prediction input:", prediction_input)
+#    prediction_input.insert(0, todays_days_since_earliest)
+#    prediction_input["Date"] = [todays_days_since_earliest]
+#    prediction_input = pd.DataFrame(prediction_input)
+#    print("Prediction input:\r", prediction_input)
+#    prediction_input.reshape(1, -1)
+#    print("Prediction input:\r", prediction_input)
+    
+    predicted_price = reg.predict(prediction_input)
+    print("Predicted price: ", predicted_price)
+    
+    return predicted_price
     
     
     

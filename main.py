@@ -9,8 +9,8 @@ Created on Fri Apr 10 14:22:44 2020
 from datetime import date
 from pathlib import Path
 from tkinter.ttk import  Combobox
-from tkinter import BOTH, Button, Checkbutton, END, Entry, Frame, IntVar, \
-                    Label, LEFT, RIGHT, Spinbox, StringVar, Tk, TOP, N, S, E, W, X, Y
+from tkinter import BOTH, Button, Checkbutton, DISABLED, END, Entry, Frame, IntVar, \
+                    Label, LEFT, NORMAL, RIGHT, Spinbox, StringVar, Tk, TOP, N, S, E, W, X, Y
 from item import Item
 import datetime
 import data_analysis
@@ -173,7 +173,13 @@ def load():
                 price = float(entry[1])
                 loaded_item.add_price_entry(shopping_date, price)
  
-def plot_prices(item, timeframe, polynomial_order):
+def plot_prices():
+    
+    # Get item from item list matching item description in selection box
+    item = item_list[item_predict_var.get()]
+    # Get timeframe in days from timeframe selection box
+    timeframe = timeframes[timeframe_var.get()]
+    # Get polynomial order from spinbox
     
     # Clear any previous plot
     ax.cla()
@@ -224,11 +230,22 @@ def plot_prices(item, timeframe, polynomial_order):
     
     toolbar.update()
     
-    if to_boolean(show_trendline_var.get()):
-        plot_price_trend(x, y, order=polynomial_order, timeframe=timeframe)
+    show_trendline_checkbox.config(state=NORMAL)
     
     
-def plot_price_trend(x, y, order=3, timeframe=10):
+def plot_price_trend():
+
+    # Get item from item list matching item description in selection box
+    item = item_list[item_predict_var.get()]
+    # Get timeframe in days from timeframe selection box
+    timeframe = timeframes[timeframe_var.get()]
+    # Get polynomial order from spinbox
+    polynomial_order = int(polynomial_order_spinbox.get())
+    
+    # x = Dates, y = Prices
+    x = [entry[0] for entry in item.price_data]
+    y = [entry[1] for entry in item.price_data]
+    
     earliest_date = min(x)
     latest_date = max(x) + datetime.timedelta(days=timeframe)
     
@@ -242,22 +259,23 @@ def plot_price_trend(x, y, order=3, timeframe=10):
     for d in x:
         elapsed = d - x[0]
         days_since_earliest.append(elapsed.days)
-    
-    regression_model = np.poly1d(np.polyfit(days_since_earliest, y, order))
+
+    regression_model = np.poly1d(np.polyfit(days_since_earliest, y, 
+                                            polynomial_order))
     
     x_line = list(range(0, dayrange + timeframe, stride))
     
     date_line = []
-#    for i in range(num_bins + timeframe):
     for i in range(len(x_line)):
-        date_point = earliest_date + datetime.timedelta(days=i*stride)
-        date_line.append(date_point)
-        
-#    date_line = [min(x) + datetime.timedelta(days=i * stride) for 
-#                 i in range(num_bins + timeframe)]
+        date_line.append(earliest_date + datetime.timedelta(days=i*stride))
     
-    ax.plot(date_line, regression_model(x_line), "k--")
+    if to_boolean(show_trendline_var.get()):
+        ax.plot(date_line, regression_model(x_line), "k--")
+    else:
+        plot_prices()
+
     plot_canvas.draw()
+    
                
 def predict(*events):
     # Get item from item list matching item description in selection box
@@ -273,7 +291,8 @@ def predict(*events):
     
     data_analysis.predict_single_item(item, timeframe, polynomial_order)
     
-    plot_prices(item, timeframe, polynomial_order)
+    
+
                 
 def save(*events):
     """ Save all item data to item folder """
@@ -589,11 +608,14 @@ item_select_box = Combobox(predict_control_frame, width=30,
 item_select_box.grid(row=0, column=1, columnspan=3, sticky=W)
 load_items()
 
+plot_button = Button(predict_control_frame, text="Plot", command=plot_prices)
+plot_button.grid(row=1, columnspan=4, pady=2)
+
 timeframe_select_label = Label(predict_control_frame, text="Select timeframe:")
-timeframe_select_label.grid(row=1, column=0, sticky=W)
+timeframe_select_label.grid(row=2, column=0, sticky=W)
 timeframe_select_box = Combobox(predict_control_frame, 
                                 textvariable=timeframe_var)
-timeframe_select_box.grid(row=1, column=1, columnspan=3, sticky=W)
+timeframe_select_box.grid(row=2, column=1, columnspan=3, sticky=W)
 timeframes = {"Price today":        0,
               "1 month from now":   30,
               "3 months from now":  91,
@@ -604,24 +626,27 @@ timeframe_select_box["values"] = tuple(timeframes.keys())
 timeframe_select_box.current(0)
 
 polynomial_order_label = Label(predict_control_frame, text="Polynomial order:")
-polynomial_order_label.grid(row=2, column=0, sticky=W)
+polynomial_order_label.grid(row=3, column=0, sticky=W)
 polynomial_order_spinbox = Spinbox(predict_control_frame, from_=1, to=5, width=2)
-polynomial_order_spinbox.grid(row=2, column=1, sticky=W)
+polynomial_order_spinbox.grid(row=3, column=1, sticky=W)
 
 def toggle_show_trendline_checkbox(*events):
     show_trendline_checkbox.toggle()
 
 show_trendline_label = Label(predict_control_frame, text="Show price trendline:")
-show_trendline_label.grid(row=2, column=2)
+show_trendline_label.grid(row=3, column=2)
 show_trendline_checkbox = Checkbutton(predict_control_frame,
                                       variable=show_trendline_var,
-                                      command=predict)
+                                      state=DISABLED,
+                                      command=plot_price_trend)
 show_trendline_checkbox.var = show_trendline_var
-show_trendline_checkbox.grid(row=2, column=3)
+show_trendline_checkbox.grid(row=3, column=3)
 show_trendline_checkbox.bind("<Return>", toggle_show_trendline_checkbox)
 
 predict_button = Button(predict_control_frame, text="Predict", command=predict)
-predict_button.grid(row=3, columnspan=2, sticky=E)
+predict_button.grid(row=4, columnspan=2, sticky=E)
+
+
 
 
 # =============================================================================
@@ -629,7 +654,7 @@ predict_button.grid(row=3, columnspan=2, sticky=E)
 #   Plot
 # =============================================================================
 
-plot_frame = Frame(predict_frame, borderwidth=2, relief="sunken")
+plot_frame = Frame(predict_frame, borderwidth=4, relief="raised")
 plot_frame.grid(row=2, column=0, padx=10, pady=10)
 
 # For embedding Matplotlib Figure into Tkinter Frame
