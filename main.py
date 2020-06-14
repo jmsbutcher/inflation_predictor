@@ -289,8 +289,15 @@ def predict(*events):
     print("Timeframe:", timeframe, "days")
     print("Polynomial order:", polynomial_order)
     
-    data_analysis.predict_single_item(item, timeframe, polynomial_order)
+    dates, prediction, curve = data_analysis.predict_single_item(item, 
+                                                        timeframe, 
+                                                        polynomial_order)
     
+    prediction_text = ("Predicted price: ${:2f}".format(float(prediction)))
+    
+    ax.plot(dates[0:-1], curve, "r--")
+    ax.set_title(str(prediction_text))
+    plot_canvas.draw()
     
 
                 

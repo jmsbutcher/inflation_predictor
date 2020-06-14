@@ -268,10 +268,7 @@ def predict_single_item(item,
     print(training_set.columns)
     
     # Regularized linear regression
-#    y = training_set["Y"]
     x = training_set.copy(deep=False)
-#    del x["Price"]
-#    del x["Y"]
     
     # Convert dates to integers denoting days since earliest date
     earliest_date = min(x["Date"])
@@ -282,8 +279,6 @@ def predict_single_item(item,
     
     y = training_set["Y"]
     y = y.drop([len(y) - 1])
-#    del x["Price"]
-#    del x["Y"]
     x = x.drop(["Price", "Y"], axis=1)
     
     # Extract last row to use for prediction
@@ -312,10 +307,13 @@ def predict_single_item(item,
 #    prediction_input.reshape(1, -1)
 #    print("Prediction input:\r", prediction_input)
     
-    predicted_price = reg.predict(prediction_input)
+    predicted_price = reg.predict(prediction_input)[0]
     print("Predicted price: ", predicted_price)
     
-    return predicted_price
+    prediction_curve = reg.predict(x)
+    print("Prediction curve: ", prediction_curve)
+    
+    return training_set["Date"], predicted_price, prediction_curve
     
     
     
