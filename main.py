@@ -9,7 +9,7 @@ Created on Fri Apr 10 14:22:44 2020
 from datetime import date
 from pathlib import Path
 from tkinter.ttk import  Combobox
-from tkinter import BOTH, Button, Checkbutton, DISABLED, END, Entry, Frame, IntVar, \
+from tkinter import BOTH, Button, Checkbutton, DISABLED, DoubleVar, END, Entry, Frame, IntVar, \
                     Label, LEFT, NORMAL, RIGHT, Spinbox, StringVar, Tk, TOP, N, S, E, W, X, Y
 from item import Item
 import datetime
@@ -198,7 +198,12 @@ def plot_prices():
     
     x_lower_bound = min(x) - datetime.timedelta(days=int(0.05*timerange))
     print(x_lower_bound)
-    x_upper_bound = max(x) + datetime.timedelta(days=timeframe+int(0.05*timerange))
+    
+#    bound1 = max(x) + datetime.timedelta(days=timeframe+int(0.05*timerange))
+    bound2 = date.today() + datetime.timedelta(days=timeframe+int(0.05*timerange))
+    
+    x_upper_bound = bound2
+#    x_upper_bound = max(x) + datetime.timedelta(days=timeframe+int(0.05*timerange))
     print(x_upper_bound)
     
     ax.set_xlim([x_lower_bound, x_upper_bound])
@@ -284,19 +289,28 @@ def predict(*events):
     timeframe = timeframes[timeframe_var.get()]
     # Get polynomial order from spinbox
     polynomial_order = int(polynomial_order_spinbox.get())
+    # Get regularization coefficient
+    regularization_coeff = float(regularization_var.get())
     
     print("Predicting:", item.item_description)
     print("Timeframe:", timeframe, "days")
     print("Polynomial order:", polynomial_order)
+    print("Regularization term:", regularization_coeff)
     
     dates, prediction, curve = data_analysis.predict_single_item(item, 
                                                         timeframe, 
-                                                        polynomial_order)
+                                                        polynomial_order,
+                                                        regularization_coeff)
     
-    prediction_text = ("Predicted price: ${:2f}".format(float(prediction)))
+    prediction_text = ("Predicted price:\n${:2f}".format(float(prediction)))
     
-    ax.plot(dates[0:-1], curve, "r--")
-    ax.set_title(str(prediction_text))
+    ax.plot(dates, curve, "r--")
+    ax.plot(dates[-1], prediction, "k*")
+    
+    ax.text(date.today(), float(prediction), prediction_text)
+    
+#    ax.set_title(str(prediction_text))
+    
     plot_canvas.draw()
     
 
@@ -451,8 +465,10 @@ item_desc_var = StringVar()
 item_predict_var = StringVar()
 item_unit_var = StringVar()
 item_storebrand_var = IntVar()
-timeframe_var = StringVar()
+regularization_var = DoubleVar()
 show_trendline_var = IntVar()
+timeframe_var = StringVar()
+
 
 
 
@@ -650,8 +666,16 @@ show_trendline_checkbox.var = show_trendline_var
 show_trendline_checkbox.grid(row=3, column=3)
 show_trendline_checkbox.bind("<Return>", toggle_show_trendline_checkbox)
 
+regularization_label = Label(predict_control_frame, text="Regularization "
+                                                         "coefficient:")
+regularization_label.grid(row=4, column=0, columnspan=2, sticky=W)
+regularization_entry = Entry(predict_control_frame, 
+                             textvariable=regularization_var,
+                             width=3)
+regularization_entry.grid(row=4, column=1, columnspan=1, sticky=E)
+
 predict_button = Button(predict_control_frame, text="Predict", command=predict)
-predict_button.grid(row=4, columnspan=2, sticky=E)
+predict_button.grid(row=5, column=4, columnspan=1, sticky=E, padx=5, pady=5)
 
 
 

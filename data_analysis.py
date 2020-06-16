@@ -235,7 +235,6 @@ def predict_single_item(item,
         col = a + ((col - col.min())*(b - a) / (col.max() - col.min()))
 
         training_set[feature] = col
-        print("After normalization:\n", training_set)
     
         # Add polynomial terms
         if polynomial_order > 1:
@@ -247,27 +246,13 @@ def predict_single_item(item,
                 # New feature column: "Date^2", "Price^2", "CPI^2", etc.
                 feature_with_exponent = "^".join([feature, str(exponent)])
                 
-#                if feature == "Date":
-#                    dates = training_set["Date"]
-#                    # Compute timedeltas since earliest date in days
-#                    days_since_earliest = dates - dates[0]
-#                    # Convert timedeltas to ints so they can be exponentiated
-#                    exponentiated_days = pd.Series([int(d.days ** exponent) for 
-#                                                    d in days_since_earliest])
-#                    print(exponentiated_days)            
-#                    # Convert exponentiated days back into timedeltas
-#                    time_deltas = pd.Series([datetime.timedelta(days=d) for
-#                                            d in exponentiated_days])
-#                    print("Timedeltas:", time_deltas)
-#                    training_set[feature_with_exponent] = dates + time_deltas
-#                else:
-                
                 training_set[feature_with_exponent] = training_set[feature] ** exponent
                 
     print(training_set)    
     print(training_set.columns)
     
     # Regularized linear regression
+    
     x = training_set.copy(deep=False)
     
     # Convert dates to integers denoting days since earliest date
@@ -277,18 +262,42 @@ def predict_single_item(item,
         days_since_earliest.append((date_entry - earliest_date).days)
     x["Date"] = days_since_earliest
     
-    y = training_set["Y"]
-    y = y.drop([len(y) - 1])
-    x = x.drop(["Price", "Y"], axis=1)
-    
     # Extract last row to use for prediction
     prediction_input = x[-1:]
-    x = x.drop([len(x) - 1])
+    prediction_input = prediction_input.drop(["Price", "Y"], axis=1)
     
-    # Remove rows with null values
-    x.dropna()
+    print("X - 1:\n", x)
+    
+#    x = x.drop([len(x) - 1])
+#    
+#    print("X - 2:\n", x)
+    
+    # Remove rows with null values - will eliminate prediction row at bottom
+    x = x.dropna()   
+    
+    print("X - 3:\n", x)
+
+    y = x["Y"]
+#    y = y.drop([len(y) - 1])
+    
+    print("X - 4:\n", x)
+    
+    x = x.drop(["Price", "Y"], axis=1)
+    
+    
+#    y = training_set["Y"]
+#    y = y.drop([len(y) - 1])
+#    x = x.drop(["Price", "Y"], axis=1)
+#    
+#    # Extract last row to use for prediction
+#    prediction_input = x[-1:]
+#    x = x.drop([len(x) - 1])   
+#    
+#    # Remove rows with null values
+#    x.dropna()
     
     print("Training set after processing:\n", x)
+    print("Y-column:", y)
     print("Prediction input:\n", prediction_input)
     
     # Train model
@@ -307,13 +316,34 @@ def predict_single_item(item,
 #    prediction_input.reshape(1, -1)
 #    print("Prediction input:\r", prediction_input)
     
+    
     predicted_price = reg.predict(prediction_input)[0]
     print("Predicted price: ", predicted_price)
     
-    prediction_curve = reg.predict(x)
+    prediction_curve = list(reg.predict(x))
+    prediction_curve.append(predicted_price)
     print("Prediction curve: ", prediction_curve)
     
-    return training_set["Date"], predicted_price, prediction_curve
+    print("Days list:", x["Date"])
+    # Convert date column back into Date objects
+#    date_list = []
+#    for d in x["Date"]:
+#        date_list.append(earliest_date + datetime.timedelta(days=d))
+#    date_list.append(date.today())
+#    print("Date list:", date_list)
+    date_list = list(x["Date"])
+    print("\n")
+    print("PR1:", prediction_input["Date"])
+    print("PR2:", list(prediction_input["Date"])[0])
+    date_list.append(list(prediction_input["Date"])[0])
+    print("Date list:")
+    offset_list = []
+    for d in date_list:
+        offset_list.append(earliest_date + datetime.timedelta(days=(d + timeframe)))
+#    date_list.append(date.today())
+    print("Offset list:", offset_list)
+    
+    return offset_list, predicted_price, prediction_curve
     
     
     
