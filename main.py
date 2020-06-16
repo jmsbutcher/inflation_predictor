@@ -87,63 +87,6 @@ def apply_store_selection(*events):
     # Load items from store into the item selection box in predict frame
     load_items()
 
-def enter_shopping_trip_data_manually():
-    """ Use the keyboard to enter data manually.
-          Step 1: Get store information and date from keyboard input.
-          Step 2: (Loop) Get item information and price from keyboard input,
-                  create new item object, add it to the item list, and add
-                  a price entry to it.
-          Step 3: Print the store and item info to standard output
-    """
-    # Get the store information
-    store_name = input("Enter the name of the store: ").lower()
-    store_location = input("Enter the store location: ").lower()
-    trip_was_today = input("Was the shopping trip today? [y/n] ").lower()
-    if trip_was_today:
-        shopping_date = date.today()
-    else:
-        shopping_date = date.fromisoformat(input("Enter the date of the "
-            "shopping trip: yyyy-mm-dd\n"))
-        
-    # Start loop for creating items 
-    more_items_to_add = True
-    while more_items_to_add:
-        # Enter item information
-        item_type = input(
-            "Enter the type of product,"
-            "e.g.: (apple, peanut butter, band-aids, etc.)\n").lower()
-        item_description = input(
-            "Enter a more detailed description of the item,"
-            "e.g.: (store brand red delicious apples)\n").lower()
-        item_unit_quantity = input(
-            "Enter the net weight or number of contents of the product,"
-            "e.g.: (12-pack, 30oz, etc.)\n").lower()
-        is_store_brand = input(
-            "Is the item a store brand? [y/n] ").lower()
-        if is_store_brand == "y":
-            is_store_brand = True
-        else:
-            is_store_brand = False
-        item_price = input("Enter the price of the product: $")
-        
-        # Create new Item object using the info just entered plus
-        #   the store info entered earlier
-        new_item = Item(item_type, item_description, item_unit_quantity,
-                        store_name, store_location, is_store_brand)
-        
-        # Add new item to the item list dictionary using the item
-        #   description as the key and the item object as the value
-        item_list[item_description] = new_item
-        
-        # Add date and price to the item's list of price entries
-        new_item.add_price_entry(shopping_date, item_price)
-        
-        more_items_to_add = to_boolean(input("Enter another item? [y/n]: "))
-        
-def generate_training_set(item, timeframe):
-    """ 
-    """
-    return data_analysis.convert_price_data_to_training_set(item, timeframe)
         
 def load():
     """ Load saved item data into item_list """
@@ -239,7 +182,7 @@ def plot_prices():
     
     
 def plot_price_trend():
-
+    """ Plot a linear or polynomial regression trendline of price vs. date """
     # Get item from item list matching item description in selection box
     item = item_list[item_predict_var.get()]
     # Get timeframe in days from timeframe selection box
@@ -252,7 +195,7 @@ def plot_price_trend():
     y = [entry[1] for entry in item.price_data]
     
     earliest_date = min(x)
-    latest_date = max(x) + datetime.timedelta(days=timeframe)
+    latest_date = date.today() + datetime.timedelta(days=timeframe)
     
     daterange = latest_date - earliest_date
     dayrange = daterange.days
@@ -264,18 +207,19 @@ def plot_price_trend():
     for d in x:
         elapsed = d - x[0]
         days_since_earliest.append(elapsed.days)
-
-    regression_model = np.poly1d(np.polyfit(days_since_earliest, y, 
-                                            polynomial_order))
     
-    x_line = list(range(0, dayrange + timeframe, stride))
+    # Perform linear regression (or polynomial reg. if polynomial_order > 1)
+    regression_model = np.polyfit(days_since_earliest, y, polynomial_order)
+    regression_line = np.poly1d(regression_model)
+    
+    x_line = list(range(0, dayrange, stride))
     
     date_line = []
     for i in range(len(x_line)):
         date_line.append(earliest_date + datetime.timedelta(days=i*stride))
     
     if to_boolean(show_trendline_var.get()):
-        ax.plot(date_line, regression_model(x_line), "k--")
+        ax.plot(date_line, regression_line(x_line), "k--")
     else:
         plot_prices()
 
@@ -283,6 +227,7 @@ def plot_price_trend():
     
                
 def predict(*events):
+    """ Use multivariate linear regression to predict price of item """
     # Get item from item list matching item description in selection box
     item = item_list[item_predict_var.get()]
     # Get timeframe in days from timeframe selection box
@@ -292,27 +237,21 @@ def predict(*events):
     # Get regularization coefficient
     regularization_coeff = float(regularization_var.get())
     
-    print("Predicting:", item.item_description)
-    print("Timeframe:", timeframe, "days")
-    print("Polynomial order:", polynomial_order)
-    print("Regularization term:", regularization_coeff)
-    
     dates, prediction, curve = data_analysis.predict_single_item(item, 
                                                         timeframe, 
                                                         polynomial_order,
                                                         regularization_coeff)
     
-    prediction_text = ("Predicted price:\n${:2f}".format(float(prediction)))
+    prediction_text = ("Predicted price:\n${:.2f}".format(float(prediction)))
     
     ax.plot(dates, curve, "r--")
     ax.plot(dates[-1], prediction, "k*")
     
-    ax.text(date.today(), float(prediction), prediction_text)
-    
-#    ax.set_title(str(prediction_text))
+    ax.text(date.today() + datetime.timedelta(days=timeframe), 
+            float(prediction), 
+            prediction_text)
     
     plot_canvas.draw()
-    
 
                 
 def save(*events):
@@ -329,25 +268,46 @@ def save(*events):
     saved_label.grid(row=3, column=2)
 
 def to_boolean(var):
-    """ Convert strings ('y', 'n') and integers (1, 0) 
-          to boolean values (True, False) """
-    if type(var) is type("a"):
+    """ Convert strings ('y', 'n') and integers (1, 0) to boolean values """
+    if var.isinstance(str):
         var = var.lower().strip()
         if var == "y":
             return True
-        else:
+        elif var == "n":
             return False
-    elif type(var) is type(1):
+        else:
+            print("ERROR: String must be either 'y' or 'n'. You entered:", var)
+            return False
+    elif var.isinstance(int):
         if var == 1:
             return True
+        elif var == 0:
+            return False
         else:
+            print("ERROR: Integer must be either 1 or 0. You entered:", var)
             return False
     else:
+        print("ERROR: to_boolean(var) only accepts 'y', 'n', 0, or 1. You "
+              "entered a", type(var), "-->", var)
         return False
+    
+#    if type(var) is type("a"):
+#        var = var.lower().strip()
+#        if var == "y":
+#            return True
+#        else:
+#            return False
+#    elif type(var) is type(1):
+#        if var == 1:
+#            return True
+#        else:
+#            return False
+#    else:
+#        return False
     
 
 class Item_entry:
-    
+    """ A GUI object for entering or editing the price of an item. """
     def __init__(self, item):
         self.item = item
         self.create_existing_item_frame(item)
