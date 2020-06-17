@@ -6,9 +6,11 @@ Created on Wed May 20 17:40:02 2020
 @author: JamesButcher
 """
 import datetime
-from datetime import date
+from datetime import date, timedelta
 import numpy as np
 import pandas as pd
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
 import requests
 from bs4 import BeautifulSoup
 from sklearn import linear_model
@@ -27,13 +29,21 @@ def access_webpage(url):
           and get ready to scrape data using "BeautifulSoup"
     """
     response = requests.get(url)
+    
+    if response.status_code == 200:
+        print("Successfully reached", url)
+    elif response.status_code == 404:
+        print("!!! Failed to connect to", url)
+    
     s = BeautifulSoup(response.text, 'html.parser')
     return s
 
-
 def convert_price_data_to_training_set(item, timeframe):
-    """ Load the price data of item and add all other feature data to it
+    """ Generate training set (including y-vales) for predicting item's price
+    
+        Load the price data of item and add all other feature data to it
         to create training examples for machine learning algorithm.
+        
         Example: 
             
          item.price_data :        data : 
@@ -45,18 +55,18 @@ def convert_price_data_to_training_set(item, timeframe):
                   .                                     .
                   .         ]                           .                    }
     """
+    assert date.today() >= max(item.price_data.keys())
+    
     data = pd.DataFrame()
+
+    dates = sorted(item.price_data)
+    prices = [item.price_data[date_entry] for date_entry in dates]
     
-    # Add Date Columns
-    dates = [entry[0] for entry in item.price_data]
-    # Add today's date to use for prediction
-    dates.append(date.today())
-    data["Date"] = dates
-    
-    # Add Price Column
-    prices = [entry[1] for entry in item.price_data]
     # Add dummy value to use for prediction
+    dates.append(date.today())
     prices.append(None)
+    
+    data["Date"] = dates
     data["Price"] = prices
 
     # Add the rest of the feature columns
@@ -66,14 +76,14 @@ def convert_price_data_to_training_set(item, timeframe):
         
     # Add the groundtruth (Y-values) column
     data["Y"] = generate_y_values(dates, prices, timeframe)
-        
-    print(data)
     
     return data
 
 
 def generate_y_values(dates, prices, timeframe, max_allowed_time_diff = 15):
-    """ Generate a list of y-values, consisting of prices for entries that are
+    """ Generate the groundtruth (y-values) column
+    
+        Generate a list of y-values, consisting of prices for entries that are
         closest to <timeframe> days in the future.
         
         If there are no other entries within the maximum allowed time
@@ -94,6 +104,7 @@ def generate_y_values(dates, prices, timeframe, max_allowed_time_diff = 15):
             8  2020-05-10   3.49             NaN
             9  2020-05-18   1.99             NaN
         
+            > return [5.00, 5.00, NaN, 4.33, NaN, 3.29, NaN, NaN, NaN, NaN]
     """
     y_values = [None] * len(dates)
     length = len(dates)
@@ -126,7 +137,9 @@ def generate_y_values(dates, prices, timeframe, max_allowed_time_diff = 15):
 
 
 def get_stlouisfed_data(url, dates):
-    """ Get the data points from the St. Louis Fed website specified
+    """ Get data from the St. Louis Fed website
+    
+        Get the data points from the St. Louis Fed website specified
         by <url>, for the specified dates <dates>
         
         Search backward from the latest data point to the earliest. Find
@@ -182,7 +195,8 @@ def get_stlouisfed_data(url, dates):
 
 
 def obtain_econ_data(dates):
-    """ Get all economic data points for the list of dates provided.
+    """ Get all economic data points for the list of dates provided
+    
          - Return a dict of { "econ data point name" : [data points(float)] }
         
         Example: 
@@ -194,17 +208,10 @@ def obtain_econ_data(dates):
                          .
                          .                                 }
     """
-#    print("Dates: ", [str(d) for d in dates])
     
     for key, url in econ_sources.items():
         econ_data[key] = get_stlouisfed_data(url, dates)
-        
-#    for key, numbers in econ_data.items():
-#        print(key, " --- ", end="")
-#        for number in numbers:
-#            print(number, end=" ")
-#        print()
-        
+
     return econ_data
 
 
@@ -223,19 +230,24 @@ def predict_single_item(item,
         if feature == "Y":
             break
         col = training_set[feature]
-        
+
         # Feature scaling
 
         # Regular mean normalization (will include negative values)
-        #col = (col - col.mean()) / col.std()
+#        col = (col - col.mean()) / col.std()
         
         # Mean normalization between range a and b (all positive to allow sqrt)
         a = 0.001
         b = 2.999
-        col = a + ((col - col.min())*(b - a) / (col.max() - col.min()))
-
+        data_range = max(col) - min(col)
+        # Avoid dividing by 0 when all econ data points are the same
+        if data_range == 0:
+            data_range = 1
+            
+        col = a + ((col - min(col))*(b - a) / (data_range))
+        
         training_set[feature] = col
-    
+
         # Add polynomial terms
         if polynomial_order > 1:
             
@@ -245,12 +257,8 @@ def predict_single_item(item,
             for exponent in exponents:
                 # New feature column: "Date^2", "Price^2", "CPI^2", etc.
                 feature_with_exponent = "^".join([feature, str(exponent)])
-                
                 training_set[feature_with_exponent] = training_set[feature] ** exponent
-                
-    print(training_set)    
-    print(training_set.columns)
-    
+
     # Regularized linear regression
     
     x = training_set.copy(deep=False)
@@ -261,95 +269,45 @@ def predict_single_item(item,
     for date_entry in x["Date"]:
         days_since_earliest.append((date_entry - earliest_date).days)
     x["Date"] = days_since_earliest
+    prediction_days_since_earliest = max(days_since_earliest)
     
     # Extract last row to use for prediction
     prediction_input = x[-1:]
     prediction_input = prediction_input.drop(["Price", "Y"], axis=1)
     
-    print("X - 1:\n", x)
-    
-#    x = x.drop([len(x) - 1])
-#    
-#    print("X - 2:\n", x)
-    
     # Remove rows with null values - will eliminate prediction row at bottom
     x = x.dropna()   
-    
-    print("X - 3:\n", x)
 
     y = x["Y"]
-#    y = y.drop([len(y) - 1])
-    
-    print("X - 4:\n", x)
-    
+
     x = x.drop(["Price", "Y"], axis=1)
     
-    
-#    y = training_set["Y"]
-#    y = y.drop([len(y) - 1])
-#    x = x.drop(["Price", "Y"], axis=1)
-#    
-#    # Extract last row to use for prediction
-#    prediction_input = x[-1:]
-#    x = x.drop([len(x) - 1])   
-#    
-#    # Remove rows with null values
-#    x.dropna()
-    
-    print("Training set after processing:\n", x)
-    print("Y-column:", y)
-    print("Prediction input:\n", prediction_input)
+#    print("Training set after processing:\n", x)
+#    print("Y-column:\n", y)
+#    print("Prediction input:\n", prediction_input)
     
     # Train model
     reg = linear_model.Ridge(alpha=regularization_coeff)
     reg.fit(x, y)
     
-    # Generate input row for today's date
-#    todays_days_since_earliest = (date.today() - earliest_date).days
-#    print("Days:", todays_days_since_earliest)
-#    prediction_input = obtain_econ_data([date.today()])
-#    print("Prediction input:", prediction_input)
-#    prediction_input.insert(0, todays_days_since_earliest)
-#    prediction_input["Date"] = [todays_days_since_earliest]
-#    prediction_input = pd.DataFrame(prediction_input)
-#    print("Prediction input:\r", prediction_input)
-#    prediction_input.reshape(1, -1)
-#    print("Prediction input:\r", prediction_input)
-    
-    
     predicted_price = reg.predict(prediction_input)[0]
-    print("Predicted price: ", predicted_price)
+#    print("Predicted price: ", predicted_price)
     
     prediction_curve = list(reg.predict(x))
     prediction_curve.append(predicted_price)
-    print("Prediction curve: ", prediction_curve)
+#    print("Prediction curve: ", prediction_curve)
+#    print("Days list:", x["Date"])
     
-    print("Days list:", x["Date"])
     # Convert date column back into Date objects
-#    date_list = []
-#    for d in x["Date"]:
-#        date_list.append(earliest_date + datetime.timedelta(days=d))
-#    date_list.append(date.today())
-#    print("Date list:", date_list)
     date_list = list(x["Date"])
-    print("\n")
-    print("PR1:", prediction_input["Date"])
-    print("PR2:", list(prediction_input["Date"])[0])
-    date_list.append(list(prediction_input["Date"])[0])
-    print("Date list:")
+    date_list.append(prediction_days_since_earliest)
+    # Adjust dates to be offset into the future specified by the timeframe
     offset_list = []
     for d in date_list:
-        offset_list.append(earliest_date + datetime.timedelta(days=(d + timeframe)))
-#    date_list.append(date.today())
-    print("Offset list:", offset_list)
+        offset_list.append(earliest_date + timedelta(days=(d + timeframe)))
+#    print("Offset list:", offset_list)
     
     return offset_list, predicted_price, prediction_curve
     
     
-    
-
-
-
-
-
 

@@ -6,18 +6,18 @@ Created on Fri Apr 10 14:22:44 2020
 @author: JamesButcher
 """
 
-from datetime import date
-from pathlib import Path
-from tkinter.ttk import  Combobox
-from tkinter import BOTH, Button, Checkbutton, DISABLED, DoubleVar, END, Entry, Frame, IntVar, \
-                    Label, LEFT, NORMAL, RIGHT, Spinbox, StringVar, Tk, TOP, N, S, E, W, X, Y
-from item import Item
-import datetime
-import data_analysis
 import matplotlib
-import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
+from datetime import date, timedelta
+from pathlib import Path
+from tkinter import BOTH, Button, Checkbutton, DISABLED, DoubleVar, END, \
+                    Entry, Frame, IntVar, Label, LEFT, NORMAL, RIGHT, \
+                    Spinbox, StringVar, Tk, TOP, N, S, E, W, X, Y
+from tkinter.ttk import Combobox
+
+import data_analysis
+from item import Item
 
 # Dictionary of Item objects --- { [Item.item_description1] : [Item1], ...  }
 item_list = {}
@@ -87,7 +87,6 @@ def apply_store_selection(*events):
     # Load items from store into the item selection box in predict frame
     load_items()
 
-        
 def load():
     """ Load saved item data into item_list """
     folder = Path.cwd() / "items"
@@ -115,6 +114,7 @@ def load():
                 shopping_date = date.fromisoformat(entry[0])
                 price = float(entry[1])
                 loaded_item.add_price_entry(shopping_date, price)
+
  
 def plot_prices():
     
@@ -128,8 +128,8 @@ def plot_prices():
     ax.cla()
 
     # x = Dates, y = Prices
-    x = [entry[0] for entry in item.price_data]
-    y = [entry[1] for entry in item.price_data]
+    x = sorted(item.price_data)
+    y = [item.price_data[date_entry] for date_entry in x]
     
     timerange = (max(x) - min(x)).days + timeframe
     
@@ -139,29 +139,22 @@ def plot_prices():
     ax.set_xlabel("Date", fontsize=16)
     ax.set_ylabel("Price in $", fontsize=16)
     
-    x_lower_bound = min(x) - datetime.timedelta(days=int(0.05*timerange))
-    print(x_lower_bound)
-    
-#    bound1 = max(x) + datetime.timedelta(days=timeframe+int(0.05*timerange))
-    bound2 = date.today() + datetime.timedelta(days=timeframe+int(0.05*timerange))
-    
-    x_upper_bound = bound2
-#    x_upper_bound = max(x) + datetime.timedelta(days=timeframe+int(0.05*timerange))
-    print(x_upper_bound)
-    
+    x_lower_bound = min(x) - timedelta(days=int(0.05*timerange))
+    x_upper_bound = date.today() + timedelta(days=timeframe+int(0.05*timerange))
+
     ax.set_xlim([x_lower_bound, x_upper_bound])
     
     years = mdates.YearLocator()
     months = mdates.MonthLocator()
     
     if timerange > 1000:
-        years_format = mdates.DateFormatter("'%y")
+        years_format = mdates.DateFormatter("'%y") # E.g.: '20
         months_format = mdates.DateFormatter("")
     elif timerange > 500:
-        years_format = mdates.DateFormatter("%Y")
+        years_format = mdates.DateFormatter("%Y")  # E.g.: 2020
         months_format = mdates.DateFormatter("")
     else:
-        years_format = mdates.DateFormatter("%Y")
+        years_format = mdates.DateFormatter("%Y")  # E.g.: Jun 2020
         months_format = mdates.DateFormatter("%b")
     
     ax.xaxis.set_major_locator(years)
@@ -191,16 +184,19 @@ def plot_price_trend():
     polynomial_order = int(polynomial_order_spinbox.get())
     
     # x = Dates, y = Prices
-    x = [entry[0] for entry in item.price_data]
-    y = [entry[1] for entry in item.price_data]
+    x = sorted(item.price_data)
+    y = [item.price_data[date_entry] for date_entry in x]
     
     earliest_date = min(x)
-    latest_date = date.today() + datetime.timedelta(days=timeframe)
+    latest_date = date.today() + timedelta(days=timeframe)
     
     daterange = latest_date - earliest_date
     dayrange = daterange.days
     num_bins = 50
-    stride = int(dayrange / num_bins)
+    if dayrange <= num_bins:
+        stride = 1
+    else:
+        stride = int(dayrange / num_bins)
     
     # Convert list of dates into int list of days since first date
     days_since_earliest = []
@@ -216,7 +212,7 @@ def plot_price_trend():
     
     date_line = []
     for i in range(len(x_line)):
-        date_line.append(earliest_date + datetime.timedelta(days=i*stride))
+        date_line.append(earliest_date + timedelta(days=i*stride))
     
     if to_boolean(show_trendline_var.get()):
         ax.plot(date_line, regression_line(x_line), "k--")
@@ -247,12 +243,11 @@ def predict(*events):
     ax.plot(dates, curve, "r--")
     ax.plot(dates[-1], prediction, "k*")
     
-    ax.text(date.today() + datetime.timedelta(days=timeframe), 
+    ax.text(date.today() + timedelta(days=timeframe), 
             float(prediction), 
             prediction_text)
     
     plot_canvas.draw()
-
                 
 def save(*events):
     """ Save all item data to item folder """
@@ -262,14 +257,14 @@ def save(*events):
     for description, item in item_list.items():
         filename = folder / (description.lower().replace(" ", "_") + ".txt")
         with open(filename, "w") as f:
-            f.write(item.to_string())
+            f.write(repr(item))
     print("Save complete")
     # Display blue "Saved" message in bottom right corner of GUI
     saved_label.grid(row=3, column=2)
 
 def to_boolean(var):
     """ Convert strings ('y', 'n') and integers (1, 0) to boolean values """
-    if var.isinstance(str):
+    if isinstance(var, str):
         var = var.lower().strip()
         if var == "y":
             return True
@@ -278,7 +273,7 @@ def to_boolean(var):
         else:
             print("ERROR: String must be either 'y' or 'n'. You entered:", var)
             return False
-    elif var.isinstance(int):
+    elif isinstance(var, int):
         if var == 1:
             return True
         elif var == 0:
@@ -290,20 +285,6 @@ def to_boolean(var):
         print("ERROR: to_boolean(var) only accepts 'y', 'n', 0, or 1. You "
               "entered a", type(var), "-->", var)
         return False
-    
-#    if type(var) is type("a"):
-#        var = var.lower().strip()
-#        if var == "y":
-#            return True
-#        else:
-#            return False
-#    elif type(var) is type(1):
-#        if var == 1:
-#            return True
-#        else:
-#            return False
-#    else:
-#        return False
     
 
 class Item_entry:
@@ -328,11 +309,12 @@ class Item_entry:
                           item.item_unit_quantity + ": $"
         self.description_label = Label(self.item_frame, text=self.label_text)
         self.description_label.grid(row=0, column=0)
-        # Create and place contents of frame
-        if not item.price_entered_already_today():
-            self.generate_price_entry_box()
-        else:
+
+        d = date.fromisoformat(date_var.get())
+        if d in item.price_data:
             self.generate_price_label_box()
+        else:
+            self.generate_price_entry_box()
             
     def apply_price_entry(self, *events):
         """ Enter the price in the entry box to the item's price list """
@@ -353,19 +335,14 @@ class Item_entry:
         self.price_entry_box.destroy()
         self.generate_price_label_box()   
         
-    def destroy(self):
-        self.item_frame.destroy()
-        
     def edit(self, *events):
-        """ Remove today's price entry from item object and allow you to enter
-            a new price 
-        """
-        self.item.remove_todays_price_entry()
+        """ Remove price entry from item object and update entry widgets """
+        self.item.remove_price_entry(date.fromisoformat(date_var.get()))
         self.price_label.destroy()
         self.edit_button.destroy()
         self.generate_price_entry_box()
-        self.price_entry_box.focus_set()
-        
+        self.price_entry_box.focus_set()        
+
     def generate_price_entry_box(self):
         """ Create and place a price entry box """
         self.price_var = StringVar()
@@ -374,20 +351,25 @@ class Item_entry:
                                      width=5)
         self.price_entry_box.grid(row=0, column=1)
         self.price_entry_box.bind("<Return>", self.apply_price_entry)
-      
+  
     def generate_price_label_box(self):
-        """ - Create and place a text label of the new price
-            - Create and place an Edit button to change back to a price
-                entry box
+        """ Create and place a price label box
+        
+            - Create and place a text label of the price for given date
+            - Create and place an Edit button
         """
-        price_text = "{:.2f}".format(self.item.price_data[-1][1])
+        entry_date = date.fromisoformat(date_var.get())
+        price = self.item.price_data[entry_date]
+        price_text = "{:.2f}".format(price)
         self.price_label = Label(self.item_frame, text=price_text)
         self.price_label.grid(row=0, column=1)
         
-        self.edit_button = Button(self.item_frame, text="Edit", 
-                              command=self.edit)
+        self.edit_button = Button(self.item_frame, 
+                                  text="Edit", 
+                                  command=self.edit)
         self.edit_button.grid(row=0, column=2)
         self.edit_button.bind("<Return>", self.edit)
+    
         
         
 # =============================================================================
@@ -397,11 +379,9 @@ class Item_entry:
 load()
 
 # Print all existing item info 
-print("\n Item list: \n", item_list, "\n")
+print()
 for item in item_list.values():
-    item.sort_price_data()
-    item.print_info()
-    print("\n")
+    print(str(item), "\n")
     
 
 # =============================================================================
@@ -658,7 +638,7 @@ matplotlib.use("TkAgg")
 plot_figure = Figure(figsize=(7, 6), dpi=80)
 
 plot_canvas = FigureCanvasTkAgg(plot_figure, master=plot_frame)
-#plot_canvas.draw()
+
 plot_canvas.get_tk_widget().pack(fill=BOTH, expand=1)
 
 toolbar = NavigationToolbar2Tk(plot_canvas, plot_frame)
@@ -667,7 +647,6 @@ plot_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
 
 
 def on_key_press(event):
-    print("you pressed {}".format(event.key))
     key_press_handler(event, plot_canvas, toolbar)
 
 
