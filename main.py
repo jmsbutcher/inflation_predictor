@@ -62,21 +62,30 @@ def apply_store_selection(*events):
     """
     # Remove blue "Saved" message, indicating a new saveable change
     saved_label.grid_remove()
+    # Enable save button and other widgets
+    enable(save_button, 
+           existing_items_label, 
+           *new_frame.winfo_children(), 
+           *predict_control_frame.winfo_children())
     # Remove any existing plots from prediction frame
     ax.cla()
     # Clear saved training set
     global old_training_set
     old_training_set = None
     
-    # Reset the item entry frame
+    # Enable all the entry fields in new item entry frame
+#    enable(*new_frame.winfo_children())
+    
+    for item_entry in item_entries:
+        item_entry.enable_widgets()
+        
+    # Reset the item entry frame    
     del item_entries[:]
-    existing = exis_item_frame.winfo_children()
-    for frame in existing:
-        frame.destroy()
-    # Add title message    
-    existing_items_label = Label(exis_item_frame, font=("Arial", 16),
-                           text="Items you've tracked before from this store:")
-    existing_items_label.pack()
+        
+    for widget in exis_item_frame.winfo_children():
+        if isinstance(widget, Frame):
+            widget.destroy()
+
     # Get list of items from the store provided in the entry boxes
     store = store_var.get()
     location = location_var.get()
@@ -91,6 +100,14 @@ def apply_store_selection(*events):
             
     # Load items from store into the item selection box in predict frame
     load_items()
+    
+def disable(*widgets):
+    for widget in widgets:
+        widget.configure(state=DISABLED)
+    
+def enable(*widgets):
+    for widget in widgets:
+        widget.configure(state=NORMAL)
 
 def load():
     """ Load saved item data into item_list """
@@ -270,8 +287,10 @@ def save(*events):
         with open(filename, "w") as f:
             f.write(repr(item))
     print("Save complete")
+    
     # Display blue "Saved" message in bottom right corner of GUI
     saved_label.grid(row=3, column=2)
+    disable(save_button)
 
 def to_boolean(var):
     """ Convert strings ('y', 'n') and integers (1, 0) to boolean values """
@@ -352,6 +371,16 @@ class Item_entry:
         if self.item.item_description == item_predict_var.get():
             global old_training_set
             old_training_set = None
+            
+    def disable_widgets(self):
+        print("ITem entry disabled")
+        for widget in self.item_frame.winfo_children():
+            widget.configure(state=DISABLED)
+    
+    def enable_widgets(self):
+        print("ItEm entry enAbled")
+        for widget in self.item_frame.winfo_children():
+            widget.configure(state=NORMAL)
         
     def edit(self, *events):
         """ Remove price entry from item object and update entry widgets """
@@ -450,7 +479,7 @@ entry_frame_title.grid(row=0, columnspan=2)
 #   Date and store selector
 # =============================================================================
 store_frame = Frame(entry_frame, borderwidth=4, relief="ridge")
-store_frame.grid(row=1, column=0, pady=30)
+store_frame.grid(row=1, column=0, pady=20, ipady=5, ipadx=5)
 
 date_label = Label(store_frame, text="Date:")
 date_label.grid(row=0, column=0, sticky="W", padx=10, pady=10)
@@ -461,16 +490,21 @@ date_entry_box.grid(row=0, column=1)
 store_label = Label(store_frame, text="Store name:")
 store_label.grid(row=1, column=0, sticky="W")
 
-def load_store_locations(*events):
-    """ Create a set of store locations that contains all the store locations
-        saved in the item list for the store name currently selected in the 
-        store selection combobox, and list those store locations in the 
-        store location combobox
-    """
-    store_locations = {l.store_location for l in item_list.values() if \
-                       l.store_name == store_var.get()}
-    store_location_entry_box["values"] = tuple(store_locations)
-    store_location_entry_box.current(0)
+#def load_store_locations(*events):
+#    """ Create a set of store locations that contains all the store locations
+#        saved in the item list for the store name currently selected in the 
+#        store selection combobox, and list those store locations in the 
+#        store location combobox
+#    """
+#    for widget in new_frame.winfo_children():
+#        widget.configure(state=DISABLED)
+#    for widget in exis_item_frame.winfo_children():
+#        widget.configure(state=DISABLED)
+#    
+#    store_locations = {i.store_location for i in item_list.values() if \
+#                       i.store_name == store_var.get()}
+#    store_location_entry_box["values"] = tuple(store_locations)
+#    store_location_entry_box.current(0)
 
 # Select from a list of all the different stores found in the item list
 store_entry_box = Combobox(store_frame, textvariable=store_var)
@@ -478,20 +512,17 @@ store_entry_box.grid(row=1, column=1)
 stores = {s.store_name for s in item_list.values()}
 store_entry_box["values"] = tuple(stores)
 store_entry_box.current(0)
-store_entry_box.bind("<<ComboboxSelected>>", load_store_locations)
+#store_entry_box.bind("<<ComboboxSelected>>", load_store_locations)
 
 store_location_label = Label(store_frame, text="Location:")
 store_location_label.grid(row=2, column=0, sticky="W")
 store_location_entry_box = Combobox(store_frame, width=40, 
                                  textvariable=location_var)
 store_location_entry_box.grid(row=3, columnspan=2, padx=10, pady=10)
-#store_location_entry_box.bind("<Return>", apply_store_selection)
-#store_location_entry_box.bind("<<ComboboxSelected>>", apply_store_selection)
+#load_store_locations()
 
-load_store_locations()
-
-store_enter_button = Button(store_frame, text="Enter", command=apply_store_selection)
-                            #command=lambda:[apply_store_selection, load_items])
+store_enter_button = Button(store_frame, text="Enter", 
+                            command=apply_store_selection)
 store_enter_button.grid(row=4, columnspan=2)
 store_enter_button.bind("<Return>", apply_store_selection)
 
@@ -539,6 +570,8 @@ item_enter_button = Button(new_frame, text="Enter", command=apply_new_item)
 item_enter_button.grid(row=5)
 item_enter_button.bind("<Return>", apply_new_item)
 
+disable(*new_frame.winfo_children())
+
 
 # =============================================================================
 # Sub-frame of entry frame:
@@ -548,6 +581,12 @@ item_enter_button.bind("<Return>", apply_new_item)
 exis_item_frame = Frame(entry_frame, borderwidth=4, relief="ridge")
 exis_item_frame.grid(row=1, rowspan=2, column=1, padx=5, pady=5, sticky=N)
 
+# Add title message    
+existing_items_label = Label(exis_item_frame, font=("Arial", 16),
+                             text="Items previously tracked from this store:",
+                             state=DISABLED)
+existing_items_label.pack()
+
 # Save button that writes all item and their corresponding price data 
 #   to files in the items folder
 save_button = Button(entry_frame, text="Save", command=save)
@@ -556,6 +595,29 @@ save_button.bind("<Return>", save)
 
 # A blue "Saved" message that appears only after pressing the save button
 saved_label = Label(entry_frame, text="Saved", foreground="blue")
+
+
+
+def load_store_locations(*events):
+    """ Create a set of store locations that contains all the store locations
+        saved in the item list for the store name currently selected in the 
+        store selection combobox, and list those store locations in the 
+        store location combobox
+    """
+
+    store_locations = {i.store_location for i in item_list.values() if \
+                       i.store_name == store_var.get()}
+    store_location_entry_box["values"] = tuple(store_locations)
+    store_location_entry_box.current(0)
+    
+    disable(*new_frame.winfo_children())
+    disable(existing_items_label)
+    for item_entry in item_entries:
+        item_entry.disable_widgets()
+store_entry_box.bind("<<ComboboxSelected>>", load_store_locations)
+
+load_store_locations()
+
 
 
 # =============================================================================
@@ -645,7 +707,7 @@ regularization_entry.grid(row=4, column=1, columnspan=1, sticky=E)
 predict_button = Button(predict_control_frame, text="Predict", command=predict)
 predict_button.grid(row=5, column=4, columnspan=1, sticky=E, padx=5, pady=5)
 
-
+disable(*predict_control_frame.winfo_children())
 
 
 # =============================================================================
