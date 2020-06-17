@@ -9,6 +9,7 @@ Created on Fri Apr 10 14:22:44 2020
 import matplotlib
 import matplotlib.dates as mdates
 import numpy as np
+#import pandas as pd
 from datetime import date, timedelta
 from pathlib import Path
 from tkinter import BOTH, Button, Checkbutton, DISABLED, DoubleVar, END, \
@@ -16,7 +17,8 @@ from tkinter import BOTH, Button, Checkbutton, DISABLED, DoubleVar, END, \
                     Spinbox, StringVar, Tk, TOP, N, S, E, W, X, Y
 from tkinter.ttk import Combobox
 
-import data_analysis
+#import data_analysis
+from data_analysis import predict_single_item
 from item import Item
 
 # Dictionary of Item objects --- { [Item.item_description1] : [Item1], ...  }
@@ -62,6 +64,9 @@ def apply_store_selection(*events):
     saved_label.grid_remove()
     # Remove any existing plots from prediction frame
     ax.cla()
+    # Clear saved training set
+    global old_training_set
+    old_training_set = None
     
     # Reset the item entry frame
     del item_entries[:]
@@ -233,10 +238,14 @@ def predict(*events):
     # Get regularization coefficient
     regularization_coeff = float(regularization_var.get())
     
-    dates, prediction, curve = data_analysis.predict_single_item(item, 
+    # Saved training set for quick reuse
+    global old_training_set
+    
+    dates, prediction, curve, training_set = predict_single_item(item, 
                                                         timeframe, 
                                                         polynomial_order,
-                                                        regularization_coeff)
+                                                        regularization_coeff,
+                                                        old_training_set)
     
     prediction_text = ("Predicted price:\n${:.2f}".format(float(prediction)))
     
@@ -248,6 +257,8 @@ def predict(*events):
             prediction_text)
     
     plot_canvas.draw()
+    
+    old_training_set = training_set
                 
 def save(*events):
     """ Save all item data to item folder """
@@ -289,6 +300,7 @@ def to_boolean(var):
 
 class Item_entry:
     """ A GUI object for entering or editing the price of an item. """
+    
     def __init__(self, item):
         self.item = item
         self.create_existing_item_frame(item)
@@ -334,6 +346,12 @@ class Item_entry:
         # Replace price entry box with a text label of the price just entered
         self.price_entry_box.destroy()
         self.generate_price_label_box()   
+        self.clear_saved_training_set()
+    
+    def clear_saved_training_set(self):
+        if self.item.item_description == item_predict_var.get():
+            global old_training_set
+            old_training_set = None
         
     def edit(self, *events):
         """ Remove price entry from item object and update entry widgets """
@@ -341,7 +359,8 @@ class Item_entry:
         self.price_label.destroy()
         self.edit_button.destroy()
         self.generate_price_entry_box()
-        self.price_entry_box.focus_set()        
+        self.price_entry_box.focus_set()
+        self.clear_saved_training_set()
 
     def generate_price_entry_box(self):
         """ Create and place a price entry box """
@@ -395,6 +414,9 @@ store_matched_items = []
 
 # List of Item_entry objects currently in the price entry frame
 item_entries = []
+
+# Saved training set for quick reuse
+old_training_set = None
 
 # Entry field variables
 date_var = StringVar()
@@ -563,12 +585,18 @@ def load_items(*events):
              i.store_location == location_var.get()}
     item_select_box["values"] = tuple(items)
     item_select_box.current(0)
+    
+def reset_saved_training_set(*events):
+    global old_training_set
+    old_training_set = None
+    print("RESET TRAINING SET")
 
 item_select_label = Label(predict_control_frame, text="Select item:")
 item_select_label.grid(row=0, column=0, sticky=W)
 item_select_box = Combobox(predict_control_frame, width=30,
                            textvariable=item_predict_var)
 item_select_box.grid(row=0, column=1, columnspan=3, sticky=W)
+item_select_box.bind("<<ComboboxSelected>>", reset_saved_training_set)
 load_items()
 
 plot_button = Button(predict_control_frame, text="Plot", command=plot_prices)

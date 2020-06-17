@@ -30,10 +30,10 @@ def access_webpage(url):
     """
     response = requests.get(url)
     
-    if response.status_code == 200:
-        print("Successfully reached", url)
-    elif response.status_code == 404:
-        print("!!! Failed to connect to", url)
+#    if response.status_code == 200:
+#        print("Successfully reached", url)
+#    elif response.status_code == 404:
+#        print("!!! Failed to connect to", url)
     
     s = BeautifulSoup(response.text, 'html.parser')
     return s
@@ -75,12 +75,12 @@ def convert_price_data_to_training_set(item, timeframe):
         data[key] = econ_data[key]
         
     # Add the groundtruth (Y-values) column
-    data["Y"] = generate_y_values(dates, prices, timeframe)
+#    data["Y"] = generate_y_values(dates, prices, timeframe)
     
     return data
 
 
-def generate_y_values(dates, prices, timeframe, max_allowed_time_diff = 15):
+def generate_y_values(training_set, timeframe, max_allowed_time_diff = 15):
     """ Generate the groundtruth (y-values) column
     
         Generate a list of y-values, consisting of prices for entries that are
@@ -106,11 +106,14 @@ def generate_y_values(dates, prices, timeframe, max_allowed_time_diff = 15):
         
             > return [5.00, 5.00, NaN, 4.33, NaN, 3.29, NaN, NaN, NaN, NaN]
     """
-    y_values = [None] * len(dates)
+    dates = training_set["Date"]
+    prices = training_set["Price"]
+    
     length = len(dates)
+    y_values = [None] * length
     
     # Simply use present prices if not trying to predict into the future
-    if timeframe == 0:
+    if timeframe <= 0:
         return prices
     
     for entry_num in range(0, length-1):
@@ -218,18 +221,27 @@ def obtain_econ_data(dates):
 def predict_single_item(item, 
                         timeframe=0, 
                         polynomial_order=1, 
-                        regularization_coeff=0):
+                        regularization_coeff=0,
+                        saved_training_set=None):
     
-    # Generate training set
-    training_set = convert_price_data_to_training_set(item, timeframe)
-    features = training_set.keys()
+    if saved_training_set is not None:
+        training_set = saved_training_set
+    else:
+        # Generate training set
+        training_set = convert_price_data_to_training_set(item, timeframe)
+        
     
+    training_set["Y"] = generate_y_values(training_set, timeframe)
+    
+    x = training_set.copy(deep=False)
+    
+    features = x.columns
     for feature in features:
         if feature == "Date" or feature == "Price":
             continue
         if feature == "Y":
             break
-        col = training_set[feature]
+        col = x[feature]
 
         # Feature scaling
 
@@ -246,7 +258,7 @@ def predict_single_item(item,
             
         col = a + ((col - min(col))*(b - a) / (data_range))
         
-        training_set[feature] = col
+        x[feature] = col
 
         # Add polynomial terms
         if polynomial_order > 1:
@@ -257,11 +269,9 @@ def predict_single_item(item,
             for exponent in exponents:
                 # New feature column: "Date^2", "Price^2", "CPI^2", etc.
                 feature_with_exponent = "^".join([feature, str(exponent)])
-                training_set[feature_with_exponent] = training_set[feature] ** exponent
-
+                x[feature_with_exponent] = x[feature] ** exponent
+        
     # Regularized linear regression
-    
-    x = training_set.copy(deep=False)
     
     # Convert dates to integers denoting days since earliest date
     earliest_date = min(x["Date"])
@@ -278,8 +288,8 @@ def predict_single_item(item,
     # Remove rows with null values - will eliminate prediction row at bottom
     x = x.dropna()   
 
+    # Separate x and y values and remove price column from x
     y = x["Y"]
-
     x = x.drop(["Price", "Y"], axis=1)
     
 #    print("Training set after processing:\n", x)
@@ -290,9 +300,11 @@ def predict_single_item(item,
     reg = linear_model.Ridge(alpha=regularization_coeff)
     reg.fit(x, y)
     
+    # Predict single price for the timeframe specified
     predicted_price = reg.predict(prediction_input)[0]
 #    print("Predicted price: ", predicted_price)
     
+    # Generate a prediction curve for illustration
     prediction_curve = list(reg.predict(x))
     prediction_curve.append(predicted_price)
 #    print("Prediction curve: ", prediction_curve)
@@ -307,7 +319,7 @@ def predict_single_item(item,
         offset_list.append(earliest_date + timedelta(days=(d + timeframe)))
 #    print("Offset list:", offset_list)
     
-    return offset_list, predicted_price, prediction_curve
+    return offset_list, predicted_price, prediction_curve, training_set
     
     
 
