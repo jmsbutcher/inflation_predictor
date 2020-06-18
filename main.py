@@ -204,22 +204,17 @@ def plot_prices():
         years_format = mdates.DateFormatter("%Y")  # E.g.: Jun 2020
         months_format = mdates.DateFormatter("%b")
     
+    # Format axes
     ax.xaxis.set_major_locator(years)
     ax.xaxis.set_major_formatter(years_format)
     ax.xaxis.set_minor_locator(months)
     ax.xaxis.set_minor_formatter(months_format)
-    
     ax.tick_params(which="major", length=16, width=1)
     ax.tick_params(which="minor", length=4, width=2, color="b")
-    
     ax.grid(True)
     
-#    plot_canvas.draw()
-    
     toolbar.update()
-    
     plot_price_trend()
-    
     enable(plot_controls)
     
 
@@ -696,38 +691,43 @@ timeframe_select_box.current(0)
 timeframe_select_box.bind("<<ComboboxSelected>>", disable_plot_controls)
 
 plot_button = Button(predict_control_frame, text="Plot", command=plot_prices)
-plot_button.grid(row=2, columnspan=4, pady=2)
-
-polynomial_order_label = Label(predict_control_frame, text="Polynomial order:")
-polynomial_order_label.grid(row=3, column=0, sticky=W)
-polynomial_order_spinbox = Spinbox(predict_control_frame, 
-                                   from_=1, to=5, width=2,
-                                   command=plot_price_trend)
-polynomial_order_spinbox.grid(row=3, column=1, sticky=W)
+plot_button.grid(row=2, column=1, columnspan=1, pady=5)
 
 def toggle_show_trendline_checkbox(*events):
     show_trendline_checkbox.toggle()
 
 show_trendline_label = Label(predict_control_frame, text="Show price trendline:")
-show_trendline_label.grid(row=3, column=2)
+show_trendline_label.grid(row=2, column=2, sticky=E)
 show_trendline_checkbox = Checkbutton(predict_control_frame,
                                       variable=show_trendline_var,
                                       state=DISABLED,
-                                      command=plot_price_trend)
+                                      command=plot_price_trend,
+                                      activeforeground="orange",
+                                      activebackground="red", 
+                                      disabledforeground="green",
+                                      foreground="purple",
+                                      highlightbackground="yellow")
 show_trendline_checkbox.var = show_trendline_var
-show_trendline_checkbox.grid(row=3, column=3)
+show_trendline_checkbox.grid(row=2, column=3, sticky=W)
 show_trendline_checkbox.bind("<Return>", toggle_show_trendline_checkbox)
+
+polynomial_order_label = Label(predict_control_frame, text="Polynomial order:")
+polynomial_order_label.grid(row=3, column=1, columnspan=2, sticky=W)
+polynomial_order_spinbox = Spinbox(predict_control_frame, 
+                                   from_=1, to=5, width=2,
+                                   command=plot_price_trend)
+polynomial_order_spinbox.grid(row=3, column=3, sticky=W)
 
 regularization_label = Label(predict_control_frame, text="Regularization "
                                                          "coefficient:")
-regularization_label.grid(row=4, column=0, columnspan=2, sticky=W)
+regularization_label.grid(row=4, column=1, columnspan=2, sticky=W)
 regularization_entry = Entry(predict_control_frame, 
                              textvariable=regularization_var,
-                             width=3)
-regularization_entry.grid(row=4, column=1, columnspan=1, sticky=E)
+                             width=5)
+regularization_entry.grid(row=4, column=3, columnspan=1, sticky=W)
 
 predict_button = Button(predict_control_frame, text="Predict", command=predict)
-predict_button.grid(row=5, column=4, columnspan=1, sticky=E, padx=5, pady=5)
+predict_button.grid(row=5, column=1, columnspan=1, padx=5, pady=5)
 
 disable(*predict_control_frame.winfo_children())
 
