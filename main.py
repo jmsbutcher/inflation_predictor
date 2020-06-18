@@ -193,11 +193,15 @@ def plot_prices():
     
     toolbar.update()
     
-    show_trendline_checkbox.config(state=NORMAL)
+    plot_price_trend()
+    
+    
+#    show_trendline_checkbox.config(state=NORMAL)
     
     
 def plot_price_trend():
     """ Plot a linear or polynomial regression trendline of price vs. date """
+    global trendline
     # Get item from item list matching item description in selection box
     item = item_list[item_predict_var.get()]
     # Get timeframe in days from timeframe selection box
@@ -236,10 +240,20 @@ def plot_price_trend():
     for i in range(len(x_line)):
         date_line.append(earliest_date + timedelta(days=i*stride))
     
+    # Either plot or remove the plot depending on checkbutton state
+    print("Len trendline:", len(trendline))
+    
+    if len(trendline) > 0:
+        line = trendline.pop(0)
+        line.remove()
+        del line
+
     if to_boolean(show_trendline_var.get()):
-        ax.plot(date_line, regression_line(x_line), "k--")
-    else:
-        plot_prices()
+        trendline = ax.plot(date_line, regression_line(x_line), "k--")
+#    else:
+#        line = trendline.pop(0)
+#        line.remove()
+#        del line
 
     plot_canvas.draw()
     
@@ -680,7 +694,9 @@ timeframe_select_box.current(0)
 
 polynomial_order_label = Label(predict_control_frame, text="Polynomial order:")
 polynomial_order_label.grid(row=3, column=0, sticky=W)
-polynomial_order_spinbox = Spinbox(predict_control_frame, from_=1, to=5, width=2)
+polynomial_order_spinbox = Spinbox(predict_control_frame, 
+                                   from_=1, to=5, width=2,
+                                   command=plot_price_trend)
 polynomial_order_spinbox.grid(row=3, column=1, sticky=W)
 
 def toggle_show_trendline_checkbox(*events):
@@ -743,7 +759,7 @@ def on_key_press(event):
 plot_canvas.mpl_connect("key_press_event", on_key_press)
 
 ax = plot_figure.add_subplot()
-
+trendline = ax.plot([0],[0])
 
 
 
