@@ -63,10 +63,13 @@ def apply_store_selection(*events):
     # Remove blue "Saved" message, indicating a new saveable change
     saved_label.grid_remove()
     # Enable save button and other widgets
-    enable(save_button, 
-           existing_items_label, 
-           *new_frame.winfo_children(), 
-           *predict_control_frame.winfo_children())
+    enable(save_button, existing_items_label, *new_frame.winfo_children(), 
+#           *predict_control_frame.winfo_children())
+           item_select_label, item_select_box,
+           timeframe_select_label, timeframe_select_box,
+           plot_button)
+           
+           
     # Remove any existing plots from prediction frame
     ax.cla()
     # Clear saved training set
@@ -101,13 +104,36 @@ def apply_store_selection(*events):
     # Load items from store into the item selection box in predict frame
     load_items()
     
-def disable(*widgets):
+def change_state(*widgets, new_state):
     for widget in widgets:
-        widget.configure(state=DISABLED)
+        if isinstance(widget, list):
+            for w in widget:
+                w.configure(state=new_state)
+        else:
+            widget.configure(state=new_state)
+            
+def disable(*widgets):
+    change_state(*widgets, new_state=DISABLED)
     
 def enable(*widgets):
-    for widget in widgets:
-        widget.configure(state=NORMAL)
+    change_state(*widgets, new_state=NORMAL)
+    
+
+#def disable(*widgets):
+#    for widget in widgets:
+#        if isinstance(widget, list):
+#            for w in widget:
+#                w.configure(state=DISABLED)
+#        else:
+#            widget.configure(state=DISABLED)
+#    
+#def enable(*widgets):
+#    for widget in widgets:
+#        if isinstance(widget, list):
+#            for w in widget:
+#                w.configure(state=NORMAL)
+#        else:
+#            widget.configure(state=NORMAL)
 
 def load():
     """ Load saved item data into item_list """
@@ -139,12 +165,11 @@ def load():
 
  
 def plot_prices():
-    
+    """ Plot prices vs. date for selected item """
     # Get item from item list matching item description in selection box
     item = item_list[item_predict_var.get()]
     # Get timeframe in days from timeframe selection box
     timeframe = timeframes[timeframe_var.get()]
-    # Get polynomial order from spinbox
     
     # Clear any previous plot
     ax.cla()
@@ -189,16 +214,15 @@ def plot_prices():
     
     ax.grid(True)
     
-    plot_canvas.draw()
+#    plot_canvas.draw()
     
     toolbar.update()
     
     plot_price_trend()
     
+    enable(plot_controls)
     
-#    show_trendline_checkbox.config(state=NORMAL)
-    
-    
+
 def plot_price_trend():
     """ Plot a linear or polynomial regression trendline of price vs. date """
     global trendline
@@ -240,20 +264,13 @@ def plot_price_trend():
     for i in range(len(x_line)):
         date_line.append(earliest_date + timedelta(days=i*stride))
     
-    # Either plot or remove the plot depending on checkbutton state
-    print("Len trendline:", len(trendline))
-    
+    # Either plot trendline or remove trendline depending on checkbutton state    
     if len(trendline) > 0:
         line = trendline.pop(0)
         line.remove()
         del line
-
     if to_boolean(show_trendline_var.get()):
         trendline = ax.plot(date_line, regression_line(x_line), "k--")
-#    else:
-#        line = trendline.pop(0)
-#        line.remove()
-#        del line
 
     plot_canvas.draw()
     
@@ -504,22 +521,6 @@ date_entry_box.grid(row=0, column=1)
 store_label = Label(store_frame, text="Store name:")
 store_label.grid(row=1, column=0, sticky="W")
 
-#def load_store_locations(*events):
-#    """ Create a set of store locations that contains all the store locations
-#        saved in the item list for the store name currently selected in the 
-#        store selection combobox, and list those store locations in the 
-#        store location combobox
-#    """
-#    for widget in new_frame.winfo_children():
-#        widget.configure(state=DISABLED)
-#    for widget in exis_item_frame.winfo_children():
-#        widget.configure(state=DISABLED)
-#    
-#    store_locations = {i.store_location for i in item_list.values() if \
-#                       i.store_name == store_var.get()}
-#    store_location_entry_box["values"] = tuple(store_locations)
-#    store_location_entry_box.current(0)
-
 # Select from a list of all the different stores found in the item list
 store_entry_box = Combobox(store_frame, textvariable=store_var)
 store_entry_box.grid(row=1, column=1)
@@ -611,12 +612,13 @@ save_button.bind("<Return>", save)
 saved_label = Label(entry_frame, text="Saved", foreground="blue")
 
 
-
 def load_store_locations(*events):
-    """ Create a set of store locations that contains all the store locations
+    """ 
+        
+        Create a set of store locations that contains all the store locations
         saved in the item list for the store name currently selected in the 
         store selection combobox, and list those store locations in the 
-        store location combobox
+        store location combobox.
     """
 
     store_locations = {i.store_location for i in item_list.values() if \
@@ -628,6 +630,7 @@ def load_store_locations(*events):
     disable(existing_items_label)
     for item_entry in item_entries:
         item_entry.disable_widgets()
+        
 store_entry_box.bind("<<ComboboxSelected>>", load_store_locations)
 
 load_store_locations()
@@ -654,8 +657,6 @@ predict_control_frame = Frame(predict_frame, borderwidth=4, relief="ridge")
 predict_control_frame.grid(row=1, column=0, padx=10, pady=10)
 
 def load_items(*events):
-    """ 
-    """
     items = {i.item_description for i in item_list.values() if \
              i.store_name == store_var.get() and \
              i.store_location == location_var.get()}
@@ -666,6 +667,10 @@ def reset_saved_training_set(*events):
     global old_training_set
     old_training_set = None
     print("RESET TRAINING SET")
+    disable(plot_controls)
+    
+def disable_plot_controls(*events):
+    disable(plot_controls)
 
 item_select_label = Label(predict_control_frame, text="Select item:")
 item_select_label.grid(row=0, column=0, sticky=W)
@@ -675,14 +680,11 @@ item_select_box.grid(row=0, column=1, columnspan=3, sticky=W)
 item_select_box.bind("<<ComboboxSelected>>", reset_saved_training_set)
 load_items()
 
-plot_button = Button(predict_control_frame, text="Plot", command=plot_prices)
-plot_button.grid(row=1, columnspan=4, pady=2)
-
 timeframe_select_label = Label(predict_control_frame, text="Select timeframe:")
-timeframe_select_label.grid(row=2, column=0, sticky=W)
+timeframe_select_label.grid(row=1, column=0, sticky=W)
 timeframe_select_box = Combobox(predict_control_frame, 
                                 textvariable=timeframe_var)
-timeframe_select_box.grid(row=2, column=1, columnspan=3, sticky=W)
+timeframe_select_box.grid(row=1, column=1, columnspan=3, sticky=W)
 timeframes = {"Price today":        0,
               "1 month from now":   30,
               "3 months from now":  91,
@@ -691,6 +693,10 @@ timeframes = {"Price today":        0,
               "10 years from now":  3652}
 timeframe_select_box["values"] = tuple(timeframes.keys())
 timeframe_select_box.current(0)
+timeframe_select_box.bind("<<ComboboxSelected>>", disable_plot_controls)
+
+plot_button = Button(predict_control_frame, text="Plot", command=plot_prices)
+plot_button.grid(row=2, columnspan=4, pady=2)
 
 polynomial_order_label = Label(predict_control_frame, text="Polynomial order:")
 polynomial_order_label.grid(row=3, column=0, sticky=W)
@@ -724,6 +730,12 @@ predict_button = Button(predict_control_frame, text="Predict", command=predict)
 predict_button.grid(row=5, column=4, columnspan=1, sticky=E, padx=5, pady=5)
 
 disable(*predict_control_frame.winfo_children())
+
+plot_controls = [#timeframe_select_label, timeframe_select_box,
+                 polynomial_order_label, polynomial_order_spinbox,
+                 show_trendline_label, show_trendline_checkbox,
+                 regularization_label, regularization_entry,
+                 predict_button]
 
 
 # =============================================================================
@@ -759,7 +771,7 @@ def on_key_press(event):
 plot_canvas.mpl_connect("key_press_event", on_key_press)
 
 ax = plot_figure.add_subplot()
-trendline = ax.plot([0],[0])
+trendline = ax.plot()
 
 
 
@@ -782,14 +794,6 @@ trendline = ax.plot([0],[0])
 
 
 # =============================================================================
-
-
-
-
-
-
-
-
 
 
 # =============================================================================
