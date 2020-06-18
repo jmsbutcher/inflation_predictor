@@ -33,9 +33,10 @@ def apply_new_item(*events):
         add it to the item list.
     """
     # Get values from entry boxes
-    item_type = item_type_var.get()
-    item_description = item_desc_var.get()
-    item_unit_quantity = item_unit_var.get()
+    item_type = item_type_entry.get_text()
+    item_description = item_desc_entry.get_text()
+    item_unit_quantity = item_unit_entry.get_text()
+    
     is_store_brand = to_boolean(item_storebrand_var.get())
     store_name = store_var.get()
     store_location = location_var.get()
@@ -49,12 +50,12 @@ def apply_new_item(*events):
     item_entries.append(Item_entry(new_item))
 
     # Clear text from data entry fields
-    item_type_entry.delete(0, END)
-    item_desc_entry.delete(0, END)
-    item_unit_entry.delete(0, END)
+    item_type_entry.reset()
+    item_desc_entry.reset()
+    item_unit_entry.reset()
     
     # Move text entry focus back to top for fast data entry
-    item_type_entry.focus_set()
+    item_type_entry.set_focus()
     
 def apply_store_selection(*events):
     """ Search the item list for all items that match the store name
@@ -63,12 +64,14 @@ def apply_store_selection(*events):
     # Remove blue "Saved" message, indicating a new saveable change
     saved_label.grid_remove()
     # Enable save button and other widgets
-    enable(save_button, existing_items_label, *new_frame.winfo_children(), 
-#           *predict_control_frame.winfo_children())
+    enable(save_button, 
+           existing_items_label, 
+           *new_frame.winfo_children(), 
            item_select_label, item_select_box,
            timeframe_select_label, timeframe_select_box,
            plot_button)
-           
+    item_select_box.configure(foreground="black")
+    timeframe_select_box.configure(foreground="black")
            
     # Remove any existing plots from prediction frame
     ax.cla()
@@ -77,11 +80,9 @@ def apply_store_selection(*events):
     old_training_set = None
     
     # Enable all the entry fields in new item entry frame
-#    enable(*new_frame.winfo_children())
+#    for item_entry in item_entries:
+#        item_entry.enable_widgets()
     
-    for item_entry in item_entries:
-        item_entry.enable_widgets()
-        
     # Reset the item entry frame    
     del item_entries[:]
         
@@ -118,23 +119,6 @@ def disable(*widgets):
 def enable(*widgets):
     change_state(*widgets, new_state=NORMAL)
     
-
-#def disable(*widgets):
-#    for widget in widgets:
-#        if isinstance(widget, list):
-#            for w in widget:
-#                w.configure(state=DISABLED)
-#        else:
-#            widget.configure(state=DISABLED)
-#    
-#def enable(*widgets):
-#    for widget in widgets:
-#        if isinstance(widget, list):
-#            for w in widget:
-#                w.configure(state=NORMAL)
-#        else:
-#            widget.configure(state=NORMAL)
-
 def load():
     """ Load saved item data into item_list """
     folder = Path.cwd() / "items"
@@ -543,41 +527,76 @@ store_enter_button.bind("<Return>", apply_store_selection)
 # =============================================================================
 new_frame = Frame(entry_frame, borderwidth=4, relief="ridge")
 new_frame.grid(row=2, column=0, padx=10, pady=10)
-    
+
 new_item_label = Label(new_frame, text="Have a new item to track at this "
-                          "store? Enter the info below:" )
-new_item_label.grid(row=0, column=0, columnspan=2, pady=20)
+                                       "store?\nEnter the info below:")
+new_item_label.grid(row=0, column=0, columnspan=2, pady=20) 
 
-item_type_label = Label(new_frame, text="The type of product\ne.g.: "
-                        "(apple, peanut butter, band-aids, etc.)")
-item_type_label.grid(row=1, column=0, sticky="W")
-item_type_entry = Entry(new_frame, textvariable=item_type_var)
-item_type_entry.grid(row=1, column=1)
 
-item_desc_label = Label(new_frame, text="A more detailed description of "
-                        "the item\ne.g.: (brand name red delicious apples)")
-item_desc_label.grid(row=2, column=0, sticky="W")  
-item_desc_entry = Entry(new_frame, textvariable=item_desc_var)
-item_desc_entry.grid(row=2, column=1)
 
-item_unit_label = Label(new_frame, text="The net weight or number of cont"
-                        "ents per item\ne.g.: (12-pack, 30oz)")
-item_unit_label.grid(row=3, column=0, sticky="W")
-item_unit_entry = Entry(new_frame, textvariable=item_unit_var)
-item_unit_entry.grid(row=3, column=1)
+class New_item_entry:
+    example_text_color = "#CCCCCC"
+    
+    def __init__(self, row, label_text, example_text, width=40):
+        self.row = row
+        self.label_text = label_text
+        self.example_text = example_text
+        self.width = width
+        self.var = StringVar()
+        self.create_label()
+        self.create_entry()
+        
+    def create_label(self):
+        self.label = Label(new_frame, text=self.label_text)
+        self.label.grid(row=self.row, columnspan=2, pady=3, padx=10, sticky=W)
+        
+    def create_entry(self):
+        self.entry = Entry(new_frame, textvariable=self.var, width=self.width,
+                           foreground=self.example_text_color)
+        self.entry.grid(row=self.row + 1, columnspan=2, padx=5, sticky=W)
+        self.entry.insert(0, self.example_text)
+        self.entry.bind("<FocusIn>", self.focus_in)
+        self.entry.bind("<FocusOut>", self.focus_out)
+      
+    def focus_in(self, *events):
+        self.entry.delete(0, END)
+        self.entry.configure(foreground="black")
+        
+    def focus_out(self, *events):
+        if len(self.var.get()) == 0:
+            self.reset()
+            
+    def get_text(self):
+        return self.var.get()    
+    
+    def reset(self):
+        self.entry.delete(0, END)
+        self.entry.insert(0, self.example_text)
+        self.entry.configure(foreground=self.example_text_color)
+        
+    def set_focus(self):
+        self.entry.focus_set()
+
+item_type_entry = New_item_entry(1, "The type of product:",
+                            "e.g.: (apple, peanut butter, band-aids, etc.)")
+item_desc_entry = New_item_entry(3, "A more detailed description:",
+                            "e.g.: (brand name red delicious apples)")
+item_unit_entry = New_item_entry(5, "Net weight or number of contents "
+                            "per item:", "e.g.: (12-pack, 30oz)", width=30)
+
     
 def toggle_storebrand_checkbox(*events):
     item_sb_checkbox.toggle()
 
 item_sb_label = Label(new_frame, text="Is the item a store brand?:")
-item_sb_label.grid(row=4, column=0, sticky="W")
+item_sb_label.grid(row=7, column=0, padx=10, sticky=W)
 item_sb_checkbox = Checkbutton(new_frame, variable=item_storebrand_var)
 item_sb_checkbox.var = item_storebrand_var
-item_sb_checkbox.grid(row=4, column=1, sticky="W")
+item_sb_checkbox.grid(row=7, column=1, sticky="W")
 item_sb_checkbox.bind("<Return>", toggle_storebrand_checkbox)
 
 item_enter_button = Button(new_frame, text="Enter", command=apply_new_item)                  
-item_enter_button.grid(row=5)
+item_enter_button.grid(row=8, pady=5)
 item_enter_button.bind("<Return>", apply_new_item)
 
 disable(*new_frame.winfo_children())
@@ -670,7 +689,8 @@ def disable_plot_controls(*events):
 item_select_label = Label(predict_control_frame, text="Select item:")
 item_select_label.grid(row=0, column=0, sticky=W)
 item_select_box = Combobox(predict_control_frame, width=30,
-                           textvariable=item_predict_var)
+                           textvariable=item_predict_var,
+                           foreground="gray")
 item_select_box.grid(row=0, column=1, columnspan=3, sticky=W)
 item_select_box.bind("<<ComboboxSelected>>", reset_saved_training_set)
 load_items()
@@ -678,7 +698,8 @@ load_items()
 timeframe_select_label = Label(predict_control_frame, text="Select timeframe:")
 timeframe_select_label.grid(row=1, column=0, sticky=W)
 timeframe_select_box = Combobox(predict_control_frame, 
-                                textvariable=timeframe_var)
+                                textvariable=timeframe_var,
+                                foreground="gray")
 timeframe_select_box.grid(row=1, column=1, columnspan=3, sticky=W)
 timeframes = {"Price today":        0,
               "1 month from now":   30,
