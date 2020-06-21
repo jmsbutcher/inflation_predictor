@@ -1,6 +1,6 @@
 # inflation_predictor
 
-A Python app that tracks, analyzes, and predicts future trends of ordinary consumer products using machine learning.
+A Python app that tracks, analyzes, and predicts future price trends of ordinary consumer products using machine learning.
 
 - The user enters the prices of his or her favorite items at the store after every shopping trip into a user-friendly GUI.
 - The program keeps track of the item, the store, the date, and the price.
