@@ -6,3 +6,7 @@ A Python app that tracks, analyzes, and predicts future price trends of ordinary
 - The program keeps track of the item, the store, the date, and the price.
 - On command, the program scrapes a set of economic data points from the web and bundles it all into a machine learning training set.
 - The program performs a linear regression algorithm and displays a future price trend on an individual-item-basis. Key timeframes are highlighted, e.g. "The 5lb bag of Red delicious apples from the Wake forest Walmart is predicted to cost $6.44 a month from now (76% accuracy)."
+<br>
+<p align="center">
+  <img src="">
+</p>
