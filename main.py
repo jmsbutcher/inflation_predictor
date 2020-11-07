@@ -274,7 +274,16 @@ def predict(*events):
                                                         regularization_coeff,
                                                         old_training_set)
     
-    prediction_text = ("Predicted price:\n${:.2f}".format(float(prediction)))
+#    prediction_text = ("Predicted price:\n${:.2f}".format(float(prediction)))
+    prediction_text = ("${:.2f}".format(float(prediction)))
+
+#    item_text = item_predict_var.get
+    timeframe_text = timeframe_var.get()
+    date_text = str(date.today() + timedelta(days=timeframe))
+    
+    prediction_result_text = "Predicted price for {}\non {}, {}:\n{}".format( \
+                             item, date_text, timeframe_text, prediction_text)
+    #result_label.configure(text=prediction_result_text)    
     
     ax.plot(dates, curve, "r--")
     ax.plot(dates[-1], prediction, "k*")
@@ -328,7 +337,7 @@ def to_boolean(var):
     
 
 class Item_entry:
-    """ A GUI object for entering or editing the price of an item. """
+    """ A frame for entering or editing the price of an item. """
     
     def __init__(self, item):
         self.item = item
@@ -348,7 +357,8 @@ class Item_entry:
         # Label example: " Whole wheat wonder bread  -  1 loaf: $ "
         self.label_text = item.item_description.capitalize() + "  -  " + \
                           item.item_unit_quantity + ": $"
-        self.description_label = Label(self.item_frame, text=self.label_text)
+        self.description_label = Label(self.item_frame, text=self.label_text,
+                                       wraplength=300)
         self.description_label.grid(row=0, column=0)
 
         d = date.fromisoformat(date_var.get())
@@ -489,30 +499,30 @@ entry_frame_title.grid(row=0, columnspan=2)
 #   Date and store selector
 # =============================================================================
 store_frame = Frame(entry_frame, borderwidth=4, relief="ridge")
-store_frame.grid(row=1, column=0, pady=20, ipady=5, ipadx=5)
+store_frame.grid(row=1, column=0, ipady=5, ipadx=5)
 
 date_label = Label(store_frame, text="Date:")
-date_label.grid(row=0, column=0, sticky="W", padx=10, pady=10)
+date_label.grid(row=0, column=0, sticky=W, padx=5, pady=5)
 date_entry_box = Entry(store_frame, textvariable=date_var)
 date_entry_box.insert(1, str(date.today()))
-date_entry_box.grid(row=0, column=1)
+date_entry_box.grid(row=0, column=1, sticky=W)
 
 store_label = Label(store_frame, text="Store name:")
-store_label.grid(row=1, column=0, sticky="W")
+store_label.grid(row=1, column=0, sticky=W)
 
 # Select from a list of all the different stores found in the item list
 store_entry_box = Combobox(store_frame, textvariable=store_var)
-store_entry_box.grid(row=1, column=1)
+store_entry_box.grid(row=1, column=1, sticky=W)
 stores = {s.store_name for s in item_list.values()}
 store_entry_box["values"] = tuple(stores)
 store_entry_box.current(0)
 #store_entry_box.bind("<<ComboboxSelected>>", load_store_locations)
 
 store_location_label = Label(store_frame, text="Location:")
-store_location_label.grid(row=2, column=0, sticky="W")
-store_location_entry_box = Combobox(store_frame, width=40, 
+store_location_label.grid(row=2, column=0, sticky=W)
+store_location_entry_box = Combobox(store_frame, width=27, 
                                  textvariable=location_var)
-store_location_entry_box.grid(row=3, columnspan=2, padx=10, pady=10)
+store_location_entry_box.grid(row=2, column=1, pady=5, sticky=W)
 #load_store_locations()
 
 store_enter_button = Button(store_frame, text="Enter", 
@@ -557,17 +567,23 @@ class New_item_entry:
         self.entry.insert(0, self.example_text)
         self.entry.bind("<FocusIn>", self.focus_in)
         self.entry.bind("<FocusOut>", self.focus_out)
+        self.entry.bind("<Return>", self.move_to_next)
       
     def focus_in(self, *events):
-        self.entry.delete(0, END)
-        self.entry.configure(foreground="black")
+        if self.var.get() == self.example_text:
+            self.entry.delete(0, END)
+            self.entry.configure(foreground="black")
         
     def focus_out(self, *events):
         if len(self.var.get()) == 0:
             self.reset()
             
     def get_text(self):
-        return self.var.get()    
+        # Return contents of the entry field if default text has been changed.
+        if self.var.get() == self.example_text:
+            return("")
+        else:
+            return self.var.get()    
     
     def reset(self):
         self.entry.delete(0, END)
@@ -576,6 +592,10 @@ class New_item_entry:
         
     def set_focus(self):
         self.entry.focus_set()
+        
+    def move_to_next(self, *events):
+        next_widget = self.entry.tk_focusNext()
+        next_widget.focus_set()
 
 item_type_entry = New_item_entry(1, "The type of product:",
                             "e.g.: (apple, peanut butter, band-aids, etc.)")
@@ -608,7 +628,7 @@ disable(*new_frame.winfo_children())
 #   Used for price entry
 # =============================================================================
 exis_item_frame = Frame(entry_frame, borderwidth=4, relief="ridge")
-exis_item_frame.grid(row=1, rowspan=2, column=1, padx=5, pady=5, sticky=N)
+exis_item_frame.grid(row=1, rowspan=2, column=1, padx=5, sticky=N)
 
 # Add title message    
 existing_items_label = Label(exis_item_frame, font=("Arial", 16),
@@ -627,7 +647,7 @@ saved_label = Label(entry_frame, text="Saved", foreground="blue")
 
 
 def load_store_locations(*events):
-    """ 
+    """ Load all the locations previously saved for the selected store
         
         Create a set of store locations that contains all the store locations
         saved in the item list for the store name currently selected in the 
@@ -650,7 +670,6 @@ store_entry_box.bind("<<ComboboxSelected>>", load_store_locations)
 load_store_locations()
 
 
-
 # =============================================================================
 # Prediction frame: Main frame for making predictions about item prices
 # =============================================================================
@@ -663,12 +682,13 @@ predict_frame_title = Label(predict_frame, font=("Arial", 20, "bold"),
 predict_frame_title.grid(row=0, column=0)
 
 
+
 # =============================================================================
 # Sub-frame of predict_frame:
 #   Control frame for selecting item and prediction parameters
 # =============================================================================
 predict_control_frame = Frame(predict_frame, borderwidth=4, relief="ridge")
-predict_control_frame.grid(row=1, column=0, padx=10, pady=10)
+predict_control_frame.grid(row=1, column=0, padx=5, pady=10)
 
 def load_items(*events):
     items = {i.item_description for i in item_list.values() if \
@@ -701,12 +721,12 @@ timeframe_select_box = Combobox(predict_control_frame,
                                 textvariable=timeframe_var,
                                 foreground="gray")
 timeframe_select_box.grid(row=1, column=1, columnspan=3, sticky=W)
-timeframes = {"Price today":        0,
-              "1 month from now":   30,
-              "3 months from now":  91,
-              "1 year from now":    365,
-              "3 years from now":   1096,
-              "10 years from now":  3652}
+timeframes = {"Today":                0,
+              "1 month from today":   30,
+              "3 months from today":  91,
+              "1 year from today":    365,
+              "3 years from today":   1096,
+              "10 years from today":  3652}
 timeframe_select_box["values"] = tuple(timeframes.keys())
 timeframe_select_box.current(0)
 timeframe_select_box.bind("<<ComboboxSelected>>", disable_plot_controls)
@@ -760,12 +780,25 @@ plot_controls = [#timeframe_select_label, timeframe_select_box,
 
 
 # =============================================================================
+# Sub-frame of predict_frame:
+#   Results and message frame
+# =============================================================================
+
+
+#results_frame = Frame(predict_frame, borderwidth=4, relief="ridge")
+#results_frame.grid(row=1, column=1)
+#
+#result_label = Label(results_frame)
+#result_label.pack()
+
+
+# =============================================================================
 # Sub-frame of predict frame:
 #   Plot
 # =============================================================================
 
 plot_frame = Frame(predict_frame, borderwidth=4, relief="raised")
-plot_frame.grid(row=2, column=0, padx=10, pady=10)
+plot_frame.grid(row=2, columnspan=2, padx=10, pady=10)
 
 # For embedding Matplotlib Figure into Tkinter Frame
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -774,7 +807,7 @@ from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 matplotlib.use("TkAgg")
 
-plot_figure = Figure(figsize=(7, 6), dpi=80)
+plot_figure = Figure(figsize=(8, 6), dpi=80)
 
 plot_canvas = FigureCanvasTkAgg(plot_figure, master=plot_frame)
 
