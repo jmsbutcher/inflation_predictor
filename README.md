@@ -6,7 +6,7 @@ A Python app that tracks, analyzes, and predicts future price trends of ordinary
 - The program keeps track of the item, the store, the date, and the price.
 - On command, the program scrapes a set of economic data points from the web and bundles it all into a machine learning training set.
 - The program performs a linear regression algorithm and displays a future price trend on an individual item basis. Key timeframes are highlighted, e.g. "The 5lb bag of Red delicious apples from the Wake forest Walmart is predicted to cost $6.44 a month from now."
-<br>
+
 <p align="center">
   <img src="https://github.com/jmsbutcher/inflation_predictor/blob/master/Images/GUI_4.png">
 </p>
@@ -78,6 +78,7 @@ If you are adding new items, type in the item type, description, and quantity, a
 <p>[ Future work: increase number of economic data points; utilize RNNs, which are perfectly suited to temporal data prediction tasks such as this. ]</p>
 
 <p>
-© 2020 James Butcher  
+© 2020 James Butcher
+<br>
 jmsbutcher1576@gmail.com
 </p>
