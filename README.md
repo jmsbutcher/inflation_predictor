@@ -8,7 +8,7 @@ A Python app that tracks, analyzes, and predicts future price trends of ordinary
 - The program performs a linear regression algorithm and displays a future price trend on an individual item basis. Key timeframes are highlighted, e.g. "The 5lb bag of Red delicious apples from the Wake forest Walmart is predicted to cost $6.44 a month from now."
 <br>
 <p align="center">
-  <img src="https://github.com/jmsbutcher/inflation_predictor/blob/master/GUI_4.png">
+  <img src="https://github.com/jmsbutcher/inflation_predictor/blob/master/Images/GUI_4.png">
 </p>
 
 ## Keeping track of item prices
@@ -24,3 +24,8 @@ The first time you visit a store, type in the store name and location. Previousl
 <p align="center">
   <img src="https://github.com/jmsbutcher/inflation_predictor/blob/master/Images/GUI-store_entry.png">
 </p>
+
+Then click the "Enter" button.
+
+### Step 3: Enter New Items to Track
+If you are adding new items
