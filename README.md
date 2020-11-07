@@ -1,4 +1,4 @@
-# inflation_predictor
+# Inflation Predictor
 
 ### A Python app that tracks, analyzes, and predicts future price trends of ordinary consumer products using machine learning.
 
