@@ -25,7 +25,22 @@ The first time you visit a store, type in the store name and location. Previousl
   <img src="https://github.com/jmsbutcher/inflation_predictor/blob/master/Images/GUI-store_entry.png">
 </p>
 
-Then click the "Enter" button.
+Then click the "Enter" button. At this point, any previously tracked items will appear in a list to the right.
 
 ### Step 3: Enter New Items to Track
-If you are adding new items
+If you are adding new items, type in the item type, description, and quantity, and then click "Enter" for each new item. The items will be added to the list on the right.
+
+<p align="center">
+  <img src="https://github.com/jmsbutcher/inflation_predictor/blob/master/Images/GUI-entry_1.png">
+</p>
+
+### Step 4: Enter Prices
+Now, enter the prices you gathered from your shopping trip. Click in the entry field next to the dollar sign, enter the price, and then press Enter. The cursor will jump to the next entry field automatically for fast data entry. If you make a mistake, simply click the Edit button next to that item. 
+**Note:** To skip adding a price for a certain item, simply leave the entry field blank. Do not enter "0".
+Once all of the data has been entered, click the Save button. This will write all of the items and their price data to text files to be automatically loaded the next time you open the app.
+
+<p align="center">
+  <img src="https://github.com/jmsbutcher/inflation_predictor/blob/master/Images/GUI-entry_2.png">
+</p>
+
+
