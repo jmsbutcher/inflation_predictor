@@ -51,13 +51,10 @@ Once all of the data has been entered, click the Save button. This will write al
 Now you are done! You may close the app and go on putting your groceries away. Next time you go shopping, open the app and enter the prices again for that date. Over months and years, you will have accumulated a wealth of price data for the items you usually buy.
 
 ### Step 5: Plot Price Trends
-After you have entered some data over a span of time, you can begin checking on price trends. 
-<br>
-Go over to the frame on the right, titled: "Make Price Predictions." 
-<br>
-Select an item from the drop down menu and click "Plot".
-<br>
-A chart will be plotted showing all the prices you entered at their corresponding dates.
+<p>After you have entered some data over a span of time, you can begin checking on price trends.</p>
+<p>Go over to the frame on the right, titled: "Make Price Predictions."</p>
+<p>Select an item from the drop down menu and click "Plot".</p>
+<p>A chart will be plotted showing all the prices you entered at their corresponding dates.</p>
 
 <p align="center">
   <img src="https://github.com/jmsbutcher/inflation_predictor/blob/master/Images/GUI-plot_1.png">
